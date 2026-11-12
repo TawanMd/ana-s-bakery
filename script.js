@@ -11,7 +11,8 @@
  */
 const IFOOD_CONFIG = {
   isLive: false,
-  storeUrl: 'https://www.ifood.com.br/delivery/florianopolis-sc/anas-bakery'
+  storeUrl: 'https://www.ifood.com.br/delivery/florianopolis-sc/anas-bakery',
+  whatsappNumbers: ['5548988015140', '5548991444114']
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -257,15 +258,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const selectedItems = [];
+
+  function updateWhatsappLinks() {
+    const baseText = selectedItems.length > 0
+      ? `Olá! Gostaria de encomendar na Ana's Bakery: ${selectedItems.join(', ')} 🍪`
+      : "Olá! Gostaria de fazer uma encomenda na Ana's Bakery 🍪";
+    const encoded = encodeURIComponent(baseText);
+    document.querySelectorAll('.btn-whatsapp-link').forEach((link) => {
+      const phone = link.getAttribute('data-phone') || '5548988015140';
+      link.setAttribute('href', `https://wa.me/${phone}?text=${encoded}`);
+    });
+  }
+
   document.querySelectorAll('.btn-add-item').forEach((btn) => {
     btn.addEventListener('click', () => {
       const itemName = btn.getAttribute('data-item') || 'Doce Artesanal';
+      selectedItems.push(itemName);
       cartCount++;
       if (cartCountEl) cartCountEl.textContent = String(cartCount);
+      updateWhatsappLinks();
+
       if (IFOOD_CONFIG.isLive && IFOOD_CONFIG.storeUrl) {
         window.open(IFOOD_CONFIG.storeUrl, '_blank', 'noopener,noreferrer');
       } else {
-        showToast(`🍪 "${itemName}" adicionado à sua lista de encomenda!`);
+        showToast(`🍪 "${itemName}" adicionado! Clique no WhatsApp abaixo para enviar seu pedido.`);
       }
     });
   });
@@ -276,7 +293,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (IFOOD_CONFIG.isLive && IFOOD_CONFIG.storeUrl) {
         handleIfoodRedirect(e);
       } else {
-        showToast(`🛍️ Você selecionou ${cartCount} itens para encomenda! Em breve pedidos direto pelo iFood.`);
+        const entregaEl = document.getElementById('entrega');
+        if (entregaEl) entregaEl.scrollIntoView({ behavior: 'smooth' });
+        showToast(`📲 Escolha um dos nossos WhatsApps ((48) 98801-5140 ou (48) 99144-4114) para concluir sua encomenda!`);
       }
     });
   }

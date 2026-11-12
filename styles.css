@@ -1303,6 +1303,46 @@ body.intro-complete .hero-entrance-item.delay-4 {
   gap: 14px;
 }
 
+.btn-ifood-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border-radius: 999px;
+  border: 2.5px solid var(--caramel);
+  background: rgba(253, 247, 231, 0.08);
+  color: var(--bg-cream);
+  font-family: var(--font-body);
+  font-size: 0.98rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s var(--bounce-ease);
+}
+
+.btn-ifood-outline:hover {
+  background: var(--caramel);
+  color: var(--choc-dark);
+  transform: translateY(-2px);
+}
+
+.footer-whatsapp-line {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--choc-dark);
+}
+
+.footer-whatsapp-line a {
+  color: var(--cookie-gold);
+  text-decoration: underline;
+  font-weight: 800;
+  transition: color 0.2s ease;
+}
+
+.footer-whatsapp-line a:hover {
+  color: var(--choc-dark);
+}
+
 .delivery-banner {
   background: var(--choc-dark);
   color: var(--bg-cream);
