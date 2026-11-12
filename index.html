@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ana's Bakery — Naturalmente Doce, Feito Sob Encomenda | Florianópolis</title>
+  <meta name="description" content="Doceria artesanal sob encomenda em Florianópolis. Cookies amanteigados com gotas de chocolate nobre e cones de waffle trufados feitos especialmente para você." />
+  <link rel="icon" type="image/png" href="assets/logo.png" />
+
+  <!-- Tipografia Google Fonts: Fraunces (Serif lúdica/bold) + Plus Jakarta Sans (Geométrica limpa) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800;9..144,900&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ========================================================================
+       1. ANIMAÇÃO DE INTRODUÇÃO / CARREGAMENTO (0 - 1.5s)
+       - Fundo Creme Suave (#FDF7E7)
+       - Traçado draw-line/sketch em SVG + preenchimento da logo oficial
+       - Transição de escala e deslocamento para a barra de navegação
+       ======================================================================== -->
+  <div id="intro-overlay" class="intro-overlay" aria-label="Animação de abertura Ana's Bakery">
+    <div id="intro-stage" class="intro-stage">
+      <!-- SVG de traçado (draw-line sketch effect) -->
+      <svg class="intro-sketch-svg" viewBox="0 0 240 240" aria-hidden="true">
+        <!-- Círculo externo e interno -->
+        <circle class="sketch-path" cx="120" cy="120" r="106" />
+        <circle class="sketch-path gold" cx="120" cy="120" r="92" />
+        <!-- Arco ondulado de cookie -->
+        <path class="sketch-path gold" d="M 38 135 C 32 82, 72 36, 120 36 C 168 36, 208 82, 202 135" />
+        <!-- Monograma 'A' central com textura de waffle -->
+        <path class="sketch-path" d="M 68 152 L 106 54 L 136 54 L 174 152 L 146 152 L 120 82 L 94 148" />
+        <!-- Onda de Florianópolis na base do 'A' -->
+        <path class="sketch-path caramel" d="M 52 156 C 78 152, 98 118, 125 126 C 110 138, 118 166, 156 158 C 135 178, 92 178, 68 158 Z" />
+      </svg>
+
+      <!-- Logo oficial circular que preenche com chocolate e dourado -->
+      <img src="assets/logo.png" alt="Logo Ana's Bakery" class="intro-logo-fill" />
+    </div>
+    <p class="intro-caption">Preparando doces artesanais com carinho em Florianópolis...</p>
+  </div>
+
+  <!-- Camada de Migalhas e Gotas Flutuantes no Scroll (Item 4) -->
+  <div id="scroll-crumbs-layer" class="scroll-crumbs-layer" aria-hidden="true"></div>
+
+  <!-- ========================================================================
+       CONTAINER PRINCIPAL — HERO LANDING PAGE
+       ======================================================================== -->
+  <div class="page-shell">
+    <main id="inicio" class="hero-frame">
+
+      <!-- 3. NAVEGAÇÃO & EFEITOS DE HOVER -->
+      <header class="navbar">
+        <a href="#inicio" class="brand-link" aria-label="Ana's Bakery — Início">
+          <div id="nav-logo-target" class="nav-logo-wrap">
+            <img src="assets/logo.png" alt="Logo Ana's Bakery" class="nav-logo-img" />
+          </div>
+          <div class="brand-meta">
+            <span class="brand-name">Ana's Bakery</span>
+            <span class="brand-city">Florianópolis • SC</span>
+          </div>
+        </a>
+
+        <nav aria-label="Navegação Principal">
+          <ul class="nav-links">
+            <li class="nav-item">
+              <a href="#inicio" class="nav-link active">
+                Início
+                <svg class="nav-wave-underline" viewBox="0 0 52 8" preserveAspectRatio="none">
+                  <path d="M2,4 Q10,1 18,4 T34,4 T50,4" />
+                </svg>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#cardapio" class="nav-link">
+                Cardápio
+                <svg class="nav-wave-underline" viewBox="0 0 52 8" preserveAspectRatio="none">
+                  <path d="M2,4 Q10,1 18,4 T34,4 T50,4" />
+                </svg>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#entrega" class="nav-link">
+                Encomendas &amp; iFood
+                <svg class="nav-wave-underline" viewBox="0 0 52 8" preserveAspectRatio="none">
+                  <path d="M2,4 Q10,1 18,4 T34,4 T50,4" />
+                </svg>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#sobre" class="nav-link">
+                Sobre
+                <svg class="nav-wave-underline" viewBox="0 0 52 8" preserveAspectRatio="none">
+                  <path d="M2,4 Q10,1 18,4 T34,4 T50,4" />
+                </svg>
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        <div class="nav-actions">
+          <button type="button" id="btn-replay-intro" class="btn-replay-intro" title="Rever animação de entrada (0 - 1.5s)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+              <path d="M3 3v5h5" />
+            </svg>
+            Rever Intro
+          </button>
+          <a href="#entrega" class="btn-contact-pill">Encomendar</a>
+        </div>
+      </header>
+
+      <!-- 2. CORPO DA HERO SECTION -->
+      <section class="hero-body" aria-labelledby="hero-title">
+
+        <!-- COLUNA ESQUERDA: HEADLINE + BOTÃO PEÇA AGORA + BUSCA + SELOS 360° -->
+        <div class="hero-copy">
+          <div class="hero-tag hero-entrance-item">
+            <span class="hero-tag-dot"></span>
+            Produção Artesanal Sob Encomenda • Florianópolis, SC
+          </div>
+
+          <h1 id="hero-title" class="hero-headline hero-entrance-item delay-1">
+            Naturalmente Doce,<br />
+            <span class="highlight-word">Feito Sob Encomenda</span>
+          </h1>
+
+          <p class="hero-subtitle hero-entrance-item delay-2">
+            Cookies amanteigados com gotas de chocolate nobre e cones de waffle trufados, preparados artesanalmente sob encomenda com todo o carinho na Ilha da Magia.
+          </p>
+
+          <!-- Botão Principal "Fazer Encomenda" (scale 1.05 + wave-ripple fill) + Busca & Sacola -->
+          <div class="hero-cta-row hero-entrance-item delay-3">
+            <a href="#cardapio" id="btn-order-main" class="btn-order-now">
+              <span class="btn-wave-fill" aria-hidden="true"></span>
+              <span class="btn-text">Peça Agora</span>
+              <span class="btn-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14" />
+                  <path d="m12 5 7 7-7 7" />
+                </svg>
+              </span>
+            </a>
+
+            <!-- Controles de Busca e Sacola (inspirados nos assets da referência UI) -->
+            <div class="hero-quick-tools">
+              <form id="hero-search-form" class="search-pill" role="search">
+                <input type="search" id="hero-search-input" placeholder="Buscar doces..." aria-label="Buscar doces no cardápio" />
+                <button type="submit" class="search-pill-btn" aria-label="Buscar">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                </button>
+              </form>
+
+              <button type="button" id="btn-cart-toggle" class="cart-pill-btn" aria-label="Ver sacola de encomendas">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="8" cy="21" r="1" />
+                  <circle cx="19" cy="21" r="1" />
+                  <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+                </svg>
+                <span id="cart-count" class="cart-count">2</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Selos Giratórios 360° ("Sob Encomenda" e "Entrega via iFood em Breve") -->
+          <div class="hero-badges-row hero-entrance-item delay-4">
+            <!-- Selo 1: Sob Encomenda -->
+            <div class="stamp-badge" title="Passe o mouse para girar mais rápido!">
+              <svg class="stamp-ring-svg" viewBox="0 0 100 100">
+                <defs>
+                  <path id="textCircle1" d="M 50,50 m -37,0 a 37,37 0 1,1 74,0 a 37,37 0 1,1 -74,0" />
+                </defs>
+                <text fill="#FDF7E7" font-size="8.3" font-weight="800" letter-spacing="1.3">
+                  <textPath href="#textCircle1">SOB ENCOMENDA • FLORIANÓPOLIS •</textPath>
+                </text>
+              </svg>
+              <!-- Ícone Central: Cookie Mordido Vetorial -->
+              <svg class="stamp-center-icon" viewBox="0 0 64 64">
+                <path d="M46 12 C42 16, 48 24, 54 22 C56 36, 46 52, 30 52 C16 52, 10 40, 10 28 C10 15, 22 8, 36 8 C40 8, 44 10, 46 12 Z" fill="#E5A93B" stroke="#FDF7E7" stroke-width="2.5" />
+                <circle cx="24" cy="22" r="3.5" fill="#3C1F15" />
+                <circle cx="35" cy="28" r="4" fill="#3C1F15" />
+                <circle cx="22" cy="36" r="3.8" fill="#3C1F15" />
+                <circle cx="38" cy="40" r="3.2" fill="#3C1F15" />
+                <circle cx="30" cy="16" r="2.5" fill="#3C1F15" />
+              </svg>
+            </div>
+
+            <!-- Selo 2: Artesanal & Delivery -->
+            <div class="stamp-badge gold-variant" title="Produção artesanal sob encomenda e em breve no iFood!">
+              <svg class="stamp-ring-svg" viewBox="0 0 100 100">
+                <defs>
+                  <path id="textCircle2" d="M 50,50 m -37,0 a 37,37 0 1,1 74,0 a 37,37 0 1,1 -74,0" />
+                </defs>
+                <text fill="#3C1F15" font-size="8.5" font-weight="800" letter-spacing="1.4">
+                  <textPath href="#textCircle2">100% ARTESANAL • FEITO COM AMOR •</textPath>
+                </text>
+              </svg>
+              <!-- Ícone Central: Caminhãozinho de Entrega -->
+              <svg class="stamp-center-icon" viewBox="0 0 64 64">
+                <rect x="10" y="20" width="26" height="20" rx="3" fill="#3C1F15" />
+                <path d="M36 25 H46 L52 33 V40 H36 Z" fill="#3C1F15" />
+                <rect x="39" y="28" width="8" height="5" rx="1" fill="#FDF7E7" />
+                <circle cx="20" cy="42" r="5" fill="#FDF7E7" stroke="#3C1F15" stroke-width="3" />
+                <circle cx="44" cy="42" r="5" fill="#FDF7E7" stroke="#3C1F15" stroke-width="3" />
+                <path d="M4 26 H8 M2 32 H8" stroke="#3C1F15" stroke-width="3" stroke-linecap="round" />
+              </svg>
+            </div>
+
+            <div class="badges-caption">
+              <strong>Pequeno Empreendimento Artesanal</strong>
+              <span>Doces feitos sob encomenda para garantir frescor máximo. Em breve no iFood!</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- COLUNA DIREITA: ILUSTRAÇÃO INTERATIVA HERO (LOGO + COOKIES + CONE TRUFADO + CUBO + MIGALHAS) -->
+        <div id="hero-visual-stage" class="hero-visual-stage" aria-label="Ilustração interativa de cookies, cone trufado e ondas">
+
+          <!-- Halo de Luz de Fundo (Parallax 0.02) -->
+          <div class="hero-emblem-backdrop parallax-layer" data-depth="0.02"></div>
+
+          <!-- EMBLEMA PRINCIPAL: Logo Oficial Ana's Bakery (Parallax 0.04) -->
+          <div id="hero-logo-anchor" class="hero-main-logo-wrap parallax-layer" data-depth="0.04" title="Ana's Bakery — Doces Artesanais Sob Encomenda">
+            <img src="assets/logo.png" alt="Emblema Circular Ana's Bakery com Monograma A, Cookie e Onda" class="hero-main-logo-img" />
+          </div>
+
+          <!-- COOKIE MORDIDO FLUTUANTE (Esquerda — ±8px, 4s, rotação 3° no hover, Parallax 0.06) -->
+          <div class="floating-cookie-left parallax-layer" data-depth="0.06" title="Cookie Clássico com Gotas de Chocolate Nobre">
+            <div class="float-inner">
+              <svg viewBox="0 0 160 160" aria-label="Cookie mordido com gotas de chocolate">
+                <path d="M116 28 C108 38, 118 54, 132 50 C138 56, 134 72, 146 74 C144 114, 112 144, 74 144 C36 144, 14 114, 14 78 C14 40, 44 14, 82 14 C96 14, 108 19, 116 28 Z"
+                      fill="#E5A93B" stroke="#3C1F15" stroke-width="6.5" stroke-linejoin="round" />
+                <path d="M22 86 C26 118, 52 136, 84 136 C114 136, 135 112, 139 82 C132 108, 108 124, 78 124 C48 124, 28 106, 22 86 Z"
+                      fill="#C58C3E" />
+                <path d="M114 31 C107 40, 117 55, 130 51" fill="none" stroke="#FDF7E7" stroke-width="3.5" stroke-linecap="round" />
+                <ellipse cx="54" cy="48" rx="10" ry="8.5" transform="rotate(-15 54 48)" fill="#3C1F15" />
+                <circle cx="51" cy="45" r="2.2" fill="#FDF7E7" opacity="0.6" />
+                <ellipse cx="86" cy="42" rx="8" ry="7" transform="rotate(12 86 42)" fill="#3C1F15" />
+                <ellipse cx="42" cy="84" rx="11" ry="9" transform="rotate(8 42 84)" fill="#3C1F15" />
+                <circle cx="39" cy="81" r="2.3" fill="#FDF7E7" opacity="0.6" />
+                <ellipse cx="78" cy="76" rx="11.5" ry="9.5" transform="rotate(-10 78 76)" fill="#3C1F15" />
+                <circle cx="75" cy="73" r="2.5" fill="#FDF7E7" opacity="0.6" />
+                <ellipse cx="64" cy="112" rx="9.5" ry="8" transform="rotate(18 64 112)" fill="#3C1F15" />
+                <ellipse cx="104" cy="102" rx="10.5" ry="8.5" transform="rotate(-14 104 102)" fill="#3C1F15" />
+                <circle cx="108" cy="74" r="5.5" fill="#3C1F15" />
+                <circle cx="62" cy="64" r="4" fill="#3C1F15" />
+                <circle cx="92" cy="120" r="4.5" fill="#3C1F15" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- COOKIE INTEIRO NA ONDA (Base Central — ±8px assíncrono, 4s, Parallax 0.05) -->
+          <div class="floating-cookie-bottom parallax-layer" data-depth="0.05" title="Cookie Artesanal Dourado">
+            <div class="float-inner">
+              <svg viewBox="0 0 140 140" aria-label="Cookie artesanal inteiro">
+                <path d="M70 12 C104 12, 128 36, 128 70 C128 104, 102 128, 68 128 C36 128, 12 102, 12 68 C12 36, 38 12, 70 12 Z"
+                      fill="#E5A93B" stroke="#3C1F15" stroke-width="6.5" stroke-linejoin="round" />
+                <path d="M20 76 C26 106, 48 121, 74 121 C102 121, 118 100, 121 74 C112 98, 94 110, 68 110 C42 110, 26 94, 20 76 Z"
+                      fill="#C58C3E" />
+                <ellipse cx="48" cy="46" rx="9" ry="7.5" fill="#3C1F15" />
+                <ellipse cx="86" cy="44" rx="10" ry="8" fill="#3C1F15" />
+                <ellipse cx="68" cy="72" rx="10.5" ry="9" fill="#3C1F15" />
+                <ellipse cx="42" cy="84" rx="8.5" ry="7.5" fill="#3C1F15" />
+                <ellipse cx="94" cy="86" rx="9.5" ry="8" fill="#3C1F15" />
+                <circle cx="68" cy="102" r="6" fill="#3C1F15" />
+                <circle cx="64" cy="40" r="4" fill="#3C1F15" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- CONE DE WAFFLE TRUFADO (Direita — Flutuação suave + migalhas, Parallax 0.07) -->
+          <div class="floating-truffle-cone parallax-layer" data-depth="0.07" title="Cone de Waffle Crocante com Trufa de Chocolate">
+            <div class="float-inner">
+              <svg viewBox="0 0 160 230" aria-label="Cone de waffle com trufa de chocolate">
+                <path d="M40 88 L80 216 L120 88 Z" fill="#E5A93B" stroke="#3C1F15" stroke-width="6.5" stroke-linejoin="round" />
+                <path d="M80 216 L120 88 L98 88 L76 204 Z" fill="#C58C3E" />
+                <g stroke="#3C1F15" stroke-width="3.2" stroke-linecap="round" opacity="0.82">
+                  <line x1="48" y1="104" x2="104" y2="136" />
+                  <line x1="55" y1="128" x2="98" y2="154" />
+                  <line x1="62" y1="154" x2="92" y2="172" />
+                  <line x1="69" y1="178" x2="86" y2="190" />
+                  <line x1="112" y1="104" x2="56" y2="136" />
+                  <line x1="105" y1="128" x2="62" y2="154" />
+                  <line x1="98" y1="154" x2="68" y2="172" />
+                  <line x1="91" y1="178" x2="74" y2="190" />
+                </g>
+                <path d="M30 78 C26 42, 50 18, 80 18 C110 18, 134 42, 130 78 C136 86, 130 98, 118 95 C110 103, 96 102, 88 94 C80 103, 66 102, 58 94 C46 101, 32 94, 30 78 Z"
+                      fill="#3C1F15" stroke="#3C1F15" stroke-width="4" stroke-linejoin="round" />
+                <path d="M46 46 C54 32, 72 28, 86 30" fill="none" stroke="#C58C3E" stroke-width="4.5" stroke-linecap="round" opacity="0.65" />
+                <circle cx="64" cy="56" r="3.5" fill="#E5A93B" />
+                <circle cx="96" cy="50" r="3" fill="#E5A93B" />
+                <circle cx="82" cy="68" r="3.5" fill="#C58C3E" />
+                <circle cx="106" cy="70" r="2.8" fill="#FDF7E7" opacity="0.75" />
+                <circle cx="52" cy="74" r="3" fill="#E5A93B" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- BOMBOM / CUBO DE COOKIE BANHADO EM CHOCOLATE (Topo Direito, Parallax 0.05) -->
+          <div class="floating-choc-cube parallax-layer" data-depth="0.05" title="Quadradinho de Cookie Banhado em Chocolate">
+            <div class="float-inner">
+              <svg viewBox="0 0 110 110" aria-label="Cubo de cookie banhado em chocolate">
+                <path d="M22 48 L56 26 L92 44 L92 72 L58 94 L22 74 Z" fill="#E5A93B" stroke="#3C1F15" stroke-width="5.5" stroke-linejoin="round" />
+                <path d="M58 94 L92 72 L92 44 L58 64 Z" fill="#C58C3E" stroke="#3C1F15" stroke-width="5" stroke-linejoin="round" />
+                <path d="M22 48 L58 64 L92 44 L56 26 Z" fill="#FDF7E7" stroke="#3C1F15" stroke-width="5" stroke-linejoin="round" />
+                <path d="M22 48 L56 26 L74 35 C72 48, 64 52, 58 62 C50 56, 40 62, 34 55 Z" fill="#3C1F15" />
+                <circle cx="48" cy="38" r="2.5" fill="#FDF7E7" opacity="0.75" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- MIGALHAS & GOTAS ORBITANDO (Twinkling Sparks — Parallax 0.08) -->
+          <svg class="crumbs-orbit-svg parallax-layer" data-depth="0.08" viewBox="0 0 560 470" aria-hidden="true">
+            <circle class="crumb-spark c1" cx="445" cy="145" r="8" fill="#3C1F15" />
+            <circle class="crumb-spark c2" cx="468" cy="175" r="5.5" fill="#3C1F15" />
+            <circle class="crumb-spark c3" cx="118" cy="245" r="6" fill="#3C1F15" />
+            <circle class="crumb-spark c4" cx="152" cy="128" r="5" fill="#3C1F15" />
+            <circle class="crumb-spark c5" cx="395" cy="310" r="6.5" fill="#3C1F15" />
+            <circle class="crumb-spark c2" cx="185" cy="90" r="6" fill="#E5A93B" />
+            <circle class="crumb-spark c4" cx="92" cy="185" r="7.5" fill="#C58C3E" />
+            <circle class="crumb-spark c1" cx="495" cy="230" r="5" fill="#E5A93B" />
+            <path class="crumb-spark c3" d="M84 310 C94 295, 112 285, 126 282" stroke="#E5A93B" stroke-width="6" stroke-linecap="round" fill="none" />
+            <path class="crumb-spark c5" d="M420 88 L424 98 L434 102 L424 106 L420 116 L416 106 L406 102 L416 98 Z" fill="#E5A93B" />
+            <path class="crumb-spark c2" d="M136 146 L139 153 L146 156 L139 159 L136 166 L133 159 L126 156 L133 153 Z" fill="#C58C3E" />
+          </svg>
+
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           CURVAS DE ONDA FLUIDAS (ONDAS DE FLORIANÓPOLIS + CALDA DE CHOCOLATE)
+           ====================================================================== -->
+      <div class="hero-waves-container" aria-hidden="true">
+        <div class="wave-track wave-back">
+          <svg width="100%" height="220" viewBox="0 0 2880 220" preserveAspectRatio="none">
+            <path fill="#E5A93B" opacity="0.65" d="M0,128 C240,68 480,188 720,128 C960,68 1200,188 1440,128 C1680,68 1920,188 2160,128 C2400,68 2640,188 2880,128 L2880,220 L0,220 Z" />
+          </svg>
+        </div>
+
+        <div class="wave-track wave-mid">
+          <svg width="100%" height="220" viewBox="0 0 2880 220" preserveAspectRatio="none">
+            <path fill="#C58C3E" opacity="0.85" d="M0,148 C240,198 480,98 720,148 C960,198 1200,98 1440,148 C1680,198 1920,98 2160,148 C2400,198 2640,98 2880,148 L2880,220 L0,220 Z" />
+          </svg>
+        </div>
+
+        <svg class="hero-signature-wave-svg" viewBox="0 0 1440 220" preserveAspectRatio="none">
+          <path fill="#E5A93B" d="M460,220 C580,150 760,96 960,122 C1140,145 1290,70 1440,24 L1440,220 Z" />
+          <path fill="#C58C3E" d="M220,220 C360,192 500,118 650,145 C830,178 1060,95 1440,92 L1440,220 Z" />
+          <path fill="#3C1F15" d="M0,152 C90,194 210,206 305,158 C346,136 352,98 320,94 C294,91 282,118 302,132 C284,140 260,126 268,100 C278,70 326,62 360,88 C396,116 382,172 315,198 C222,226 98,212 0,184 Z" />
+          <path fill="#FDF7E7" d="M356,220 C408,195 456,152 504,122 C518,148 502,184 544,175 C578,168 608,118 644,96 C636,136 664,162 702,152 C650,194 570,214 480,220 Z" />
+          <path fill="#3C1F15" d="M590,220 C645,158 755,118 885,134 C995,148 1065,172 1175,136 C1275,100 1370,98 1440,116 L1440,220 Z" />
+          <path fill="none" stroke="#FDF7E7" stroke-width="5.5" stroke-linecap="round" d="M675,196 C725,152 805,146 868,162" />
+          <path fill="none" stroke="#E5A93B" stroke-width="6" stroke-linecap="round" d="M1195,186 C1255,168 1315,176 1368,194" />
+          <circle cx="1318" cy="148" r="12" fill="#FDF7E7" />
+          <circle cx="422" cy="136" r="6.5" fill="#3C1F15" />
+          <circle cx="568" cy="112" r="5.5" fill="#3C1F15" />
+        </svg>
+      </div>
+
+    </main>
+
+    <!-- Ponte de Transição de Scroll -->
+    <div class="scroll-spill-bridge">
+      <a href="#cardapio" class="scroll-indicator-pill">
+        <span>Role para conhecer nossos doces sob encomenda</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 5v14" />
+          <path d="m19 12-7 7-7-7" />
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       SEÇÃO CARDÁPIO SOB ENCOMENDA (100% PT-BR, FILTRÁVEL E CONECTADO À BUSCA)
+       ======================================================================== -->
+  <section id="cardapio" class="section-block">
+    <div class="section-header">
+      <span class="section-eyebrow">Produção Sob Encomenda</span>
+      <h2 class="section-title">Nosso Cardápio Artesanal</h2>
+      <p class="section-desc">
+        Somos um pequeno empreendimento artesanal em Florianópolis: cada doce é feito exclusivamente sob encomenda, garantindo ingredientes frescos e chocolate nobre em cada pedido.
+      </p>
+    </div>
+
+    <div class="menu-filters" role="tablist" aria-label="Categorias do cardápio">
+      <button type="button" class="filter-btn active" data-filter="todos">Todos os Doces</button>
+      <button type="button" class="filter-btn" data-filter="cookies">Cookies Artesanais</button>
+      <button type="button" class="filter-btn" data-filter="trufas">Cones &amp; Trufas</button>
+      <button type="button" class="filter-btn" data-filter="combos">Kits Sob Encomenda</button>
+    </div>
+
+    <div id="menu-grid" class="menu-grid">
+      <!-- Item 1 -->
+      <article class="product-card" data-category="cookies" data-name="cookie classico floripa gotas chocolate">
+        <span class="product-badge">Mais Pedido</span>
+        <div class="product-illustration">
+          <svg viewBox="0 0 140 140">
+            <circle cx="70" cy="70" r="54" fill="#E5A93B" stroke="#3C1F15" stroke-width="6" />
+            <path d="M24 78 C32 108, 56 120, 82 118 C108 115, 118 92, 120 74 C108 98, 86 108, 64 108 C42 108, 30 94, 24 78 Z" fill="#C58C3E" />
+            <circle cx="52" cy="48" r="8" fill="#3C1F15" />
+            <circle cx="86" cy="52" r="9" fill="#3C1F15" />
+            <circle cx="68" cy="76" r="9.5" fill="#3C1F15" />
+            <circle cx="46" cy="84" r="7.5" fill="#3C1F15" />
+            <circle cx="92" cy="88" r="8" fill="#3C1F15" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="product-title">Cookie Clássico da Ilha</h3>
+          <p class="product-desc">Massa dourada amanteigada com borda crocante, miolo macio e generosas gotas de chocolate meio amargo, assado para o seu pedido.</p>
+        </div>
+        <div class="product-footer">
+          <span class="product-price">R$ 16,90</span>
+          <button type="button" class="btn-add-item" data-item="Cookie Clássico da Ilha">Encomendar +</button>
+        </div>
+      </article>
+
+      <!-- Item 2 -->
+      <article class="product-card" data-category="trufas" data-name="cone trufado waffle chocolate">
+        <span class="product-badge">Exclusivo</span>
+        <div class="product-illustration">
+          <svg viewBox="0 0 140 140">
+            <path d="M46 58 L70 128 L94 58 Z" fill="#E5A93B" stroke="#3C1F15" stroke-width="5.5" stroke-linejoin="round" />
+            <line x1="52" y1="72" x2="86" y2="90" stroke="#3C1F15" stroke-width="3" />
+            <line x1="88" y1="72" x2="54" y2="90" stroke="#3C1F15" stroke-width="3" />
+            <path d="M38 52 C36 28, 52 14, 70 14 C88 14, 104 28, 102 52 C104 60, 94 66, 86 62 C78 68, 62 68, 54 62 C46 66, 36 60, 38 52 Z" fill="#3C1F15" />
+            <circle cx="60" cy="36" r="3" fill="#E5A93B" />
+            <circle cx="80" cy="40" r="3" fill="#E5A93B" />
+            <circle cx="70" cy="48" r="3" fill="#C58C3E" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="product-title">Cone Waffle Trufado</h3>
+          <p class="product-desc">Casquinha crocante banhada por dentro em chocolate e recheada sob encomenda com ganache trufada intensa.</p>
+        </div>
+        <div class="product-footer">
+          <span class="product-price">R$ 21,90</span>
+          <button type="button" class="btn-add-item" data-item="Cone Waffle Trufado">Encomendar +</button>
+        </div>
+      </article>
+
+      <!-- Item 3 -->
+      <article class="product-card" data-category="cookies" data-name="cookie caramelo flor de sal">
+        <span class="product-badge">Sob Encomenda</span>
+        <div class="product-illustration">
+          <svg viewBox="0 0 140 140">
+            <path d="M98 28 C92 36, 100 48, 112 45 C118 78, 96 122, 66 122 C36 122, 18 98, 18 68 C18 38, 42 18, 72 18 C84 18, 92 22, 98 28 Z" fill="#C58C3E" stroke="#3C1F15" stroke-width="6" />
+            <path d="M38 64 Q68 46 92 72 T52 96" fill="none" stroke="#E5A93B" stroke-width="6" stroke-linecap="round" />
+            <circle cx="52" cy="46" r="7.5" fill="#3C1F15" />
+            <circle cx="80" cy="82" r="8.5" fill="#3C1F15" />
+            <circle cx="48" cy="88" r="7" fill="#3C1F15" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="product-title">Cookie Onda de Caramelo</h3>
+          <p class="product-desc">Recheio cremoso de caramelo artesanal com toque de flor de sal de Santa Catarina e gotas de chocolate amargo.</p>
+        </div>
+        <div class="product-footer">
+          <span class="product-price">R$ 18,90</span>
+          <button type="button" class="btn-add-item" data-item="Cookie Onda de Caramelo">Encomendar +</button>
+        </div>
+      </article>
+
+      <!-- Item 4 -->
+      <article class="product-card" data-category="combos" data-name="combo degustacao 6 cookies encomenda">
+        <span class="product-badge">Kit Especial</span>
+        <div class="product-illustration">
+          <svg viewBox="0 0 160 140">
+            <circle cx="58" cy="72" r="36" fill="#E5A93B" stroke="#3C1F15" stroke-width="5.5" />
+            <circle cx="48" cy="62" r="5.5" fill="#3C1F15" />
+            <circle cx="66" cy="78" r="6" fill="#3C1F15" />
+            <circle cx="102" cy="68" r="36" fill="#C58C3E" stroke="#3C1F15" stroke-width="5.5" />
+            <circle cx="94" cy="56" r="6" fill="#3C1F15" />
+            <circle cx="112" cy="72" r="6.5" fill="#3C1F15" />
+            <circle cx="96" cy="82" r="5" fill="#3C1F15" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="product-title">Kit Degustação (6 Cookies)</h3>
+          <p class="product-desc">Monte sua seleção com 6 cookies artesanais preparados sob encomenda para compartilhar ou presentear.</p>
+        </div>
+        <div class="product-footer">
+          <span class="product-price">R$ 89,90</span>
+          <button type="button" class="btn-add-item" data-item="Kit Degustação (6 Cookies)">Encomendar +</button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SEÇÃO SOBRE O NOSSO PEQUENO EMPREENDIMENTO & REDIRECT IFOOD PRONTO
+       ======================================================================== -->
+  <section id="sobre" class="section-block" style="padding-top: 12px;">
+    <div id="entrega" class="delivery-banner">
+      <div>
+        <span class="ifood-status-pill" id="ifood-status-badge">
+          <span class="ifood-dot"></span>
+          Em breve no iFood • Hoje atendemos sob encomenda
+        </span>
+        <h2>Feito Sob Encomenda em Florianópolis</h2>
+        <p>
+          A <strong>Ana's Bakery</strong> é um pequeno empreendimento artesanal apaixonado por doces de verdade. Ainda não somos loja física: cada fornada é produzida especialmente sob encomenda para que seus cookies e trufas cheguem sempre fresquinhos.
+        </p>
+        <p>
+          Nossa entrega será realizada pelo <strong>iFood</strong> assim que inaugurarmos nossa loja na plataforma! O botão abaixo já está configurado com o redirecionamento pronto para a inauguração.
+        </p>
+
+        <div class="bairros-list">
+          <span class="bairro-tag">Produção 100% Artesanal</span>
+          <span class="bairro-tag">Feito Sob Encomenda</span>
+          <span class="bairro-tag">Florianópolis • SC</span>
+          <span class="bairro-tag">Delivery via iFood (Em Breve)</span>
+        </div>
+
+        <div class="delivery-cta-group">
+          <!-- Link/Botão com Redirect Pronto para o iFood -->
+          <a href="#entrega" id="btn-ifood-redirect" class="btn-order-now" data-ifood-ready="false">
+            <span class="btn-wave-fill" aria-hidden="true"></span>
+            <span class="btn-text" id="btn-ifood-text">Pedir pelo iFood (Em Breve)</span>
+            <span class="btn-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 17L17 7" />
+                <path d="M7 7h10v10" />
+              </svg>
+            </span>
+          </a>
+        </div>
+      </div>
+
+      <div style="text-align: center;">
+        <img src="assets/logo.png" alt="Logo Ana's Bakery Florianópolis" style="width: 195px; height: 195px; border-radius: 50%; border: 4px solid #E5A93B; box-shadow: 0 14px 30px rgba(0,0,0,0.35);" />
+        <p style="margin-top: 16px; font-weight: 700; color: #E5A93B; margin-bottom: 0;">
+          Atendimento Sob Encomenda<br />
+          Florianópolis — Santa Catarina, Brasil
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       RODAPÉ COM DADOS EMPRESARIAIS E CNPJ OFICIAL
+       ======================================================================== -->
+  <footer id="contato" class="site-footer">
+    <p class="footer-brand-line">
+      <strong>Ana's Bakery</strong> — Doces Artesanais Feitos Sob Encomenda • Florianópolis, SC — Brasil
+    </p>
+    <p class="footer-cnpj-line">
+      Ana Mayra Viganigo Martins &middot; CNPJ 61.538.015/0001-00
+    </p>
+  </footer>
+
+  <!-- Toast de Notificação em PT-BR -->
+  <div id="toast-notification" class="toast-notification" role="status" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>

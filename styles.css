@@ -1,0 +1,1464 @@
+/* ==========================================================================
+   ANA'S BAKERY — HERO LANDING PAGE (PT-BR)
+   Estilo: Moderno, Minimalista, Vetor Plano 2D Lúdico, Movimento Orgânico
+   Paleta Oficial:
+   - Creme Suave (Background): #FDF7E7
+   - Chocolate Amargo Intenso: #3C1F15
+   - Massa de Cookie Dourada:  #C58C3E
+   - Caramelo Iluminado:       #E5A93B
+   ========================================================================== */
+
+:root {
+  --bg-cream: #FDF7E7;
+  --bg-cream-deep: #F7EBD1;
+  --bg-card: #FFFDF7;
+  --choc-dark: #3C1F15;
+  --choc-mid: #532B1E;
+  --cookie-gold: #C58C3E;
+  --caramel: #E5A93B;
+  --caramel-light: #F3C66F;
+  --cream-stroke: #FDF7E7;
+
+  --font-heading: 'Fraunces', Georgia, serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --bounce-ease: cubic-bezier(0.25, 1, 0.50, 1);
+  --smooth-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --shadow-soft: 0 18px 45px rgba(60, 31, 21, 0.08);
+  --shadow-card: 0 12px 32px rgba(60, 31, 21, 0.10);
+  --border-choc: 3px solid #3C1F15;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: var(--bg-cream);
+  color: var(--choc-dark);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+}
+
+body {
+  background-color: var(--bg-cream);
+  color: var(--choc-dark);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   1. ANIMAÇÃO DE INTRODUÇÃO / CARREGAMENTO (0 - 1.5s)
+   ========================================================================== */
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background-color: var(--bg-cream);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: all;
+  transition: opacity 0.45s var(--bounce-ease), visibility 0.45s;
+}
+
+.intro-overlay.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.intro-stage {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform;
+  transition: transform 0.55s var(--bounce-ease);
+}
+
+/* SVG de traçado sketch que desenha a logo */
+.intro-sketch-svg {
+  position: absolute;
+  inset: -12px;
+  width: calc(100% + 24px);
+  height: calc(100% + 24px);
+  z-index: 3;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+
+.intro-sketch-svg .sketch-path {
+  fill: none;
+  stroke: var(--choc-dark);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 900;
+  stroke-dashoffset: 900;
+  animation: drawSketch 0.75s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.intro-sketch-svg .sketch-path.gold {
+  stroke: var(--cookie-gold);
+  stroke-width: 3;
+  animation-delay: 0.12s;
+}
+
+.intro-sketch-svg .sketch-path.caramel {
+  stroke: var(--caramel);
+  stroke-width: 2.5;
+  animation-delay: 0.22s;
+}
+
+/* Imagem oficial da logo preenchendo após o sketch */
+.intro-logo-fill {
+  width: 210px;
+  height: 210px;
+  border-radius: 50%;
+  object-fit: contain;
+  opacity: 0;
+  transform: scale(0.84) rotate(-6deg);
+  filter: drop-shadow(0 14px 28px rgba(60, 31, 21, 0.18));
+  transition: opacity 0.38s ease, transform 0.48s var(--bounce-ease);
+  z-index: 2;
+}
+
+.intro-overlay.phase-fill .intro-logo-fill {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+.intro-overlay.phase-fill .intro-sketch-svg {
+  opacity: 0.15;
+}
+
+.intro-caption {
+  margin-top: 22px;
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--choc-dark);
+  letter-spacing: 0.04em;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: fadeUpQuick 0.4s 0.2s var(--bounce-ease) forwards;
+}
+
+.intro-overlay.phase-move .intro-caption {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+@keyframes drawSketch {
+  0% {
+    stroke-dashoffset: 900;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fadeUpQuick {
+  to {
+    opacity: 0.85;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   PARTÍCULAS DE SCROLL (MIGALHAS E GOTAS FLUTUANTES)
+   ========================================================================== */
+.scroll-crumbs-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  overflow: hidden;
+}
+
+.scroll-crumb {
+  position: absolute;
+  will-change: transform;
+  opacity: 0.75;
+  transition: transform 0.15s linear;
+}
+
+/* ==========================================================================
+   CONTAINER PRINCIPAL E NAVEGAÇÃO (ESTILO HERO CARD DO MOCKUP)
+   ========================================================================== */
+.page-shell {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 20px 24px 0;
+  position: relative;
+  z-index: 10;
+}
+
+/* Moldura principal da Hero inspirada diretamente no asset de referência */
+.hero-frame {
+  position: relative;
+  background-color: var(--bg-cream);
+  border: 2.5px solid rgba(60, 31, 21, 0.14);
+  border-radius: 32px;
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+  min-height: 690px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Padrão sutil de fundo */
+.hero-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(197, 140, 62, 0.10) 1.5px, transparent 1.5px);
+  background-size: 36px 36px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Barra de Navegação */
+.navbar {
+  position: relative;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 42px 12px;
+  gap: 20px;
+}
+
+.brand-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  color: var(--choc-dark);
+  group: brand;
+}
+
+.nav-logo-wrap {
+  position: relative;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: transform 0.4s var(--bounce-ease);
+  filter: drop-shadow(0 6px 14px rgba(60, 31, 21, 0.16));
+}
+
+.brand-link:hover .nav-logo-wrap {
+  transform: scale(1.07) rotate(-4deg);
+}
+
+.nav-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 50%;
+  display: block;
+}
+
+.brand-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-name {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: var(--choc-dark);
+  line-height: 1.1;
+}
+
+.brand-city {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--cookie-gold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Links de Navegação com Sublinhado em Onda de Chocolate */
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  list-style: none;
+}
+
+.nav-item {
+  position: relative;
+}
+
+.nav-link {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  font-family: var(--font-body);
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--choc-dark);
+  padding: 6px 4px 10px;
+  transition: color 0.25s ease, transform 0.25s ease;
+}
+
+.nav-link:hover {
+  color: var(--cookie-gold);
+  transform: translateY(-1px);
+}
+
+/* Onda de chocolate que desliza/expande no hover */
+.nav-wave-underline {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 100%;
+  height: 8px;
+  transform: translateX(-50%) scaleX(0);
+  transform-origin: center;
+  transition: transform 0.38s var(--bounce-ease), opacity 0.3s ease;
+  opacity: 0;
+  overflow: visible;
+}
+
+.nav-link:hover .nav-wave-underline,
+.nav-link.active .nav-wave-underline {
+  transform: translateX(-50%) scaleX(1);
+  opacity: 1;
+}
+
+.nav-wave-underline path {
+  fill: none;
+  stroke: var(--cookie-gold);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.nav-link:hover .nav-wave-underline path {
+  stroke: var(--choc-dark);
+  animation: waveWiggle 1.2s ease-in-out infinite;
+}
+
+@keyframes waveWiggle {
+  0%, 100% {
+    d: path("M2,4 Q10,1 18,4 T34,4 T50,4");
+  }
+  50% {
+    d: path("M2,4 Q10,7 18,4 T34,4 T50,4");
+  }
+}
+
+/* Ações da Direita na Navbar */
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-replay-intro {
+  background: rgba(197, 140, 62, 0.14);
+  border: 1.5px solid rgba(60, 31, 21, 0.2);
+  color: var(--choc-dark);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 8px 13px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.25s var(--bounce-ease);
+}
+
+.btn-replay-intro:hover {
+  background: var(--bg-cream-deep);
+  transform: scale(1.04);
+  border-color: var(--choc-dark);
+}
+
+.btn-contact-pill {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--caramel);
+  color: var(--choc-dark);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 0.96rem;
+  padding: 11px 26px;
+  border-radius: 999px;
+  border: 2.5px solid var(--choc-dark);
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 4px 0 var(--choc-dark);
+  transition: transform 0.3s var(--bounce-ease), box-shadow 0.3s var(--bounce-ease), background-color 0.3s ease;
+}
+
+.btn-contact-pill:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 6px 0 var(--choc-dark);
+  background-color: var(--caramel-light);
+}
+
+.btn-contact-pill:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 0 var(--choc-dark);
+}
+
+/* ==========================================================================
+   2. CONTEÚDO PRINCIPAL DA HERO SECTION
+   ========================================================================== */
+.hero-body {
+  position: relative;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  align-items: center;
+  padding: 16px 48px 140px;
+  gap: 24px;
+  flex: 1;
+}
+
+/* Coluna Esquerda: Texto + CTA + Selos Giratórios */
+.hero-copy {
+  position: relative;
+  z-index: 25;
+  max-width: 590px;
+}
+
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(229, 169, 59, 0.22);
+  border: 2px solid var(--choc-dark);
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: var(--choc-dark);
+  margin-bottom: 18px;
+  box-shadow: 0 3px 0 var(--choc-dark);
+}
+
+.hero-tag-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--choc-dark);
+  display: inline-block;
+  animation: pulseDot 2s infinite;
+}
+
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.65; }
+}
+
+.hero-headline {
+  font-family: var(--font-heading);
+  font-size: clamp(2.75rem, 4.7vw, 4.35rem);
+  font-weight: 900;
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  color: var(--choc-dark);
+  margin-bottom: 18px;
+}
+
+.hero-headline .highlight-word {
+  position: relative;
+  display: inline-block;
+  color: var(--choc-dark);
+  z-index: 1;
+}
+
+.hero-headline .highlight-word::after {
+  content: '';
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  bottom: 6px;
+  height: 14px;
+  background-color: rgba(229, 169, 59, 0.45);
+  border-radius: 99px;
+  z-index: -1;
+  transform: rotate(-1deg);
+}
+
+.hero-subtitle {
+  font-size: 1.08rem;
+  line-height: 1.6;
+  color: var(--choc-mid);
+  font-weight: 500;
+  margin-bottom: 28px;
+  max-width: 490px;
+}
+
+/* Estados de entrada pós-loading (0.5s bounce cubic-bezier(0.25, 1, 0.50, 1)) */
+.hero-entrance-item {
+  opacity: 0;
+  transform: translateY(38px);
+}
+
+body.intro-complete .hero-entrance-item {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.5s var(--bounce-ease), transform 0.5s var(--bounce-ease);
+}
+
+body.intro-complete .hero-entrance-item.delay-1 {
+  transition-delay: 0.06s;
+}
+
+body.intro-complete .hero-entrance-item.delay-2 {
+  transition-delay: 0.14s;
+}
+
+body.intro-complete .hero-entrance-item.delay-3 {
+  transition-delay: 0.22s;
+}
+
+body.intro-complete .hero-entrance-item.delay-4 {
+  transition-delay: 0.30s;
+}
+
+/* Linha de Botões CTA e Busca Rápida */
+.hero-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 30px;
+}
+
+/* Botão Principal "Peça Agora" com Wave-Ripple Fill e scale(1.05) */
+.btn-order-now {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background-color: var(--caramel);
+  color: var(--choc-dark);
+  font-family: var(--font-body);
+  font-size: 1.12rem;
+  font-weight: 800;
+  padding: 16px 36px;
+  border-radius: 999px;
+  border: 3px solid var(--choc-dark);
+  box-shadow: 0 6px 0 var(--choc-dark);
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.35s var(--bounce-ease), box-shadow 0.35s var(--bounce-ease), color 0.35s ease;
+  z-index: 1;
+}
+
+.btn-order-now .btn-text,
+.btn-order-now .btn-icon {
+  position: relative;
+  z-index: 3;
+  transition: transform 0.35s var(--bounce-ease), color 0.35s ease;
+}
+
+/* Onda orgânica interna no hover */
+.btn-order-now .btn-wave-fill {
+  position: absolute;
+  left: -15%;
+  top: 105%;
+  width: 130%;
+  height: 260%;
+  background: var(--choc-dark);
+  border-radius: 40%;
+  z-index: 1;
+  transition: top 0.55s var(--bounce-ease), transform 0.65s ease;
+  pointer-events: none;
+}
+
+.btn-order-now:hover {
+  transform: scale(1.05) translateY(-2px);
+  box-shadow: 0 8px 0 var(--cookie-gold);
+  color: var(--bg-cream);
+}
+
+.btn-order-now:hover .btn-text,
+.btn-order-now:hover .btn-icon {
+  color: var(--bg-cream);
+}
+
+.btn-order-now:hover .btn-icon {
+  transform: translateX(4px) rotate(8deg);
+}
+
+.btn-order-now:hover .btn-wave-fill {
+  top: -65%;
+  animation: rippleSpin 4s linear infinite;
+}
+
+@keyframes rippleSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Barra de Busca e Carrinho (fiel aos controles da referência UI) */
+.hero-quick-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search-pill {
+  display: flex;
+  align-items: center;
+  background: #F4E3C1;
+  border: 2.5px solid var(--choc-dark);
+  border-radius: 999px;
+  overflow: hidden;
+  height: 48px;
+  box-shadow: 0 4px 0 var(--choc-dark);
+  transition: transform 0.25s var(--bounce-ease);
+}
+
+.search-pill:focus-within {
+  transform: scale(1.02);
+  background: #FFFDF7;
+}
+
+.search-pill input {
+  border: none;
+  background: transparent;
+  padding: 0 16px;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--choc-dark);
+  width: 175px;
+  outline: none;
+}
+
+.search-pill input::placeholder {
+  color: rgba(60, 31, 21, 0.62);
+}
+
+.search-pill-btn {
+  height: 100%;
+  padding: 0 16px;
+  background: var(--choc-dark);
+  color: var(--bg-cream);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.search-pill-btn:hover {
+  background: var(--cookie-gold);
+  color: var(--choc-dark);
+}
+
+.cart-pill-btn {
+  position: relative;
+  height: 48px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: var(--choc-dark);
+  color: var(--bg-cream);
+  border: 2.5px solid var(--choc-dark);
+  box-shadow: 0 4px 0 var(--cookie-gold);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 0.9rem;
+  transition: transform 0.25s var(--bounce-ease), background 0.25s ease;
+}
+
+.cart-pill-btn:hover {
+  transform: scale(1.06) translateY(-2px);
+  background: var(--choc-mid);
+}
+
+.cart-count {
+  background: var(--caramel);
+  color: var(--choc-dark);
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+/* ==========================================================================
+   3. SELOS / BADGES GIRATÓRIOS 360° ("ASSADO NA HORA", "ENTREGA RÁPIDA")
+   ========================================================================== */
+.hero-badges-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 6px;
+}
+
+.stamp-badge {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--choc-dark);
+  border: 3px solid var(--choc-dark);
+  box-shadow: 0 8px 20px rgba(60, 31, 21, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.4s var(--bounce-ease), box-shadow 0.4s ease;
+  user-select: none;
+}
+
+.stamp-badge.gold-variant {
+  background: var(--caramel);
+}
+
+.stamp-badge:hover {
+  transform: scale(1.12) rotate(6deg);
+  box-shadow: 0 12px 26px rgba(60, 31, 21, 0.26);
+}
+
+.stamp-ring-svg {
+  position: absolute;
+  inset: 2px;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  animation: rotateStamp 18s linear infinite;
+}
+
+.stamp-badge:hover .stamp-ring-svg {
+  animation-duration: 5s;
+}
+
+.stamp-center-icon {
+  position: relative;
+  z-index: 2;
+  width: 42px;
+  height: 42px;
+  transition: transform 0.35s var(--bounce-ease);
+}
+
+.stamp-badge:hover .stamp-center-icon {
+  transform: scale(1.16) rotate(-8deg);
+}
+
+@keyframes rotateStamp {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.badges-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 220px;
+}
+
+.badges-caption strong {
+  font-family: var(--font-heading);
+  font-size: 1.02rem;
+  color: var(--choc-dark);
+}
+
+.badges-caption span {
+  font-size: 0.84rem;
+  color: var(--choc-mid);
+  line-height: 1.35;
+}
+
+/* ==========================================================================
+   4. ILUSTRAÇÃO INTERATIVA DA HERO (LADO DIREITO + PARALLAX + FLUTUAÇÃO)
+   ========================================================================== */
+.hero-visual-stage {
+  position: relative;
+  width: 100%;
+  height: 470px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 22;
+  perspective: 1000px;
+}
+
+.parallax-layer {
+  position: absolute;
+  will-change: transform;
+  transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Halo Circular de Massa e Brilho atrás da Logo Principal */
+.hero-emblem-backdrop {
+  width: 340px;
+  height: 340px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(229, 169, 59, 0.32) 0%, rgba(197, 140, 62, 0.08) 65%, transparent 75%);
+  z-index: 1;
+}
+
+/* Emblema Central-Direito: Logo Oficial Ana's Bakery */
+.hero-main-logo-wrap {
+  position: relative;
+  width: 295px;
+  height: 295px;
+  border-radius: 50%;
+  z-index: 10;
+  cursor: pointer;
+  filter: drop-shadow(0 18px 32px rgba(60, 31, 21, 0.24));
+  transition: transform 0.45s var(--bounce-ease), filter 0.45s ease;
+  animation: gentleEmblemFloat 5.5s ease-in-out infinite;
+}
+
+.hero-main-logo-wrap:hover {
+  transform: scale(1.04) rotate(2deg);
+  filter: drop-shadow(0 22px 38px rgba(60, 31, 21, 0.32));
+}
+
+.hero-main-logo-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: contain;
+  display: block;
+}
+
+@keyframes gentleEmblemFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-7px); }
+}
+
+/* Elementos Flutuantes: Cookies (±8px, 4s, ease-in-out, assíncronos, rotação 2-3° no hover) */
+.floating-cookie-left {
+  left: 0%;
+  bottom: 36px;
+  width: 138px;
+  height: 138px;
+  z-index: 16;
+  cursor: pointer;
+}
+
+.floating-cookie-left .float-inner {
+  width: 100%;
+  height: 100%;
+  animation: cookieFloatY 4s ease-in-out infinite;
+  transition: transform 0.35s var(--bounce-ease), filter 0.35s ease;
+  filter: drop-shadow(0 12px 18px rgba(60, 31, 21, 0.22));
+}
+
+.floating-cookie-left:hover .float-inner {
+  transform: rotate(3deg) scale(1.08);
+}
+
+.floating-cookie-bottom {
+  left: 34%;
+  bottom: -68px;
+  width: 116px;
+  height: 116px;
+  z-index: 26;
+  cursor: pointer;
+}
+
+.floating-cookie-bottom .float-inner {
+  width: 100%;
+  height: 100%;
+  animation: cookieFloatY 4s ease-in-out -1.8s infinite;
+  transition: transform 0.35s var(--bounce-ease), filter 0.35s ease;
+  filter: drop-shadow(0 12px 18px rgba(60, 31, 21, 0.28));
+}
+
+.floating-cookie-bottom:hover .float-inner {
+  transform: rotate(-3deg) scale(1.09);
+}
+
+@keyframes cookieFloatY {
+  0%, 100% {
+    transform: translateY(-8px);
+  }
+  50% {
+    transform: translateY(8px);
+  }
+}
+
+/* Cone de Waffle Trufado (Direita) */
+.floating-truffle-cone {
+  right: -4px;
+  bottom: -24px;
+  width: 164px;
+  height: 235px;
+  z-index: 24;
+  cursor: pointer;
+}
+
+.floating-truffle-cone .float-inner {
+  width: 100%;
+  height: 100%;
+  animation: coneFloat 4.6s ease-in-out -0.9s infinite;
+  transition: transform 0.35s var(--bounce-ease);
+  filter: drop-shadow(0 14px 22px rgba(60, 31, 21, 0.24));
+}
+
+.floating-truffle-cone:hover .float-inner {
+  transform: rotate(-3deg) scale(1.07);
+}
+
+@keyframes coneFloat {
+  0%, 100% {
+    transform: translateY(-7px) rotate(18deg);
+  }
+  50% {
+    transform: translateY(7px) rotate(21deg);
+  }
+}
+
+/* Bombom / Cubo Banhado em Chocolate (Topo Direito, igual ao mockup!) */
+.floating-choc-cube {
+  right: 6%;
+  top: 18px;
+  width: 92px;
+  height: 92px;
+  z-index: 15;
+  cursor: pointer;
+}
+
+.floating-choc-cube .float-inner {
+  width: 100%;
+  height: 100%;
+  animation: cubeFloat 4.2s ease-in-out -2.4s infinite;
+  transition: transform 0.35s var(--bounce-ease);
+  filter: drop-shadow(0 10px 16px rgba(60, 31, 21, 0.18));
+}
+
+.floating-choc-cube:hover .float-inner {
+  transform: rotate(3deg) scale(1.1);
+}
+
+@keyframes cubeFloat {
+  0%, 100% {
+    transform: translateY(-6px) rotate(-8deg);
+  }
+  50% {
+    transform: translateY(6px) rotate(-4deg);
+  }
+}
+
+/* Migalhas e Gotas Orbitando / Piscando (Twinkling Crumbs) */
+.crumbs-orbit-svg {
+  position: absolute;
+  inset: -20px;
+  width: calc(100% + 40px);
+  height: calc(100% + 40px);
+  pointer-events: none;
+  z-index: 20;
+}
+
+.crumb-spark {
+  animation: twinkleCrumb 3.2s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.crumb-spark.c2 { animation-delay: -0.8s; animation-duration: 3.8s; }
+.crumb-spark.c3 { animation-delay: -1.6s; animation-duration: 2.9s; }
+.crumb-spark.c4 { animation-delay: -2.3s; animation-duration: 4.1s; }
+.crumb-spark.c5 { animation-delay: -1.1s; animation-duration: 3.5s; }
+
+@keyframes twinkleCrumb {
+  0%, 100% {
+    opacity: 0.45;
+    transform: translateY(0px) scale(0.88);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-9px) scale(1.14);
+  }
+}
+
+/* ==========================================================================
+   5. ONDAS FLUIDAS DE FLORIANÓPOLIS (BASE DA HERO SECTION)
+   ========================================================================== */
+.hero-waves-container {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 220px;
+  pointer-events: none;
+  z-index: 12;
+  overflow: hidden;
+}
+
+/* Onda senoidal contínua (scrolling sine wave) */
+.wave-track {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
+  display: flex;
+  will-change: transform;
+}
+
+.wave-track.wave-back {
+  animation: sineWaveScroll 18s linear infinite;
+  z-index: 1;
+}
+
+.wave-track.wave-mid {
+  animation: sineWaveScrollReverse 14s linear infinite;
+  z-index: 2;
+}
+
+.wave-track.wave-front {
+  animation: sineWaveScroll 11s linear infinite;
+  z-index: 3;
+}
+
+/* Onda artística esculpida fiel ao canto inferior do mockup */
+.hero-signature-wave-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 4;
+  animation: subtleTide 5s ease-in-out infinite;
+}
+
+@keyframes sineWaveScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes sineWaveScrollReverse {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes subtleTide {
+  0%, 100% { transform: translateY(0px) scaleY(1); }
+  50% { transform: translateY(4px) scaleY(1.03); }
+}
+
+/* ==========================================================================
+   6. PROGRESSÃO DE SCROLL — TRANSIÇÃO DE CALDA & SEÇÕES EM PT-BR
+   ========================================================================== */
+.scroll-spill-bridge {
+  position: relative;
+  margin-top: 28px;
+  padding: 18px 0 10px;
+  text-align: center;
+  z-index: 15;
+}
+
+.scroll-indicator-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 2.5px solid var(--choc-dark);
+  border-radius: 999px;
+  padding: 8px 20px;
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--choc-dark);
+  box-shadow: 0 4px 0 var(--choc-dark);
+  text-decoration: none;
+  transition: transform 0.3s var(--bounce-ease);
+}
+
+.scroll-indicator-pill:hover {
+  transform: translateY(3px);
+}
+
+/* Seções da Loja em PT-BR */
+.section-block {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 72px 24px;
+  position: relative;
+  z-index: 10;
+}
+
+.section-header {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 48px;
+}
+
+.section-eyebrow {
+  display: inline-block;
+  background: rgba(229, 169, 59, 0.25);
+  border: 2px solid var(--choc-dark);
+  border-radius: 999px;
+  padding: 5px 16px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 14px;
+}
+
+.section-title {
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 3.4vw, 3rem);
+  font-weight: 900;
+  color: var(--choc-dark);
+  margin-bottom: 12px;
+  line-height: 1.12;
+}
+
+.section-desc {
+  font-size: 1.02rem;
+  color: var(--choc-mid);
+  line-height: 1.6;
+}
+
+/* Filtros do Cardápio */
+.menu-filters {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 36px;
+}
+
+.filter-btn {
+  background: var(--bg-card);
+  color: var(--choc-dark);
+  border: 2.5px solid var(--choc-dark);
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--choc-dark);
+  transition: all 0.25s var(--bounce-ease);
+}
+
+.filter-btn:hover,
+.filter-btn.active {
+  background: var(--caramel);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 0 var(--choc-dark);
+}
+
+/* Grid de Produtos do Cardápio */
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 28px;
+}
+
+.product-card {
+  background: var(--bg-card);
+  border: 3px solid var(--choc-dark);
+  border-radius: 26px;
+  padding: 26px;
+  box-shadow: 0 8px 0 var(--choc-dark);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.35s var(--bounce-ease), box-shadow 0.35s var(--bounce-ease);
+  position: relative;
+  overflow: hidden;
+}
+
+.product-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 14px 0 var(--choc-dark);
+}
+
+.product-badge {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  background: var(--caramel);
+  border: 2px solid var(--choc-dark);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.product-illustration {
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+  background: radial-gradient(circle, rgba(229, 169, 59, 0.22) 0%, transparent 70%);
+  border-radius: 18px;
+}
+
+.product-illustration svg {
+  width: 118px;
+  height: 118px;
+  transition: transform 0.4s var(--bounce-ease);
+}
+
+.product-card:hover .product-illustration svg {
+  transform: scale(1.1) rotate(4deg);
+}
+
+.product-title {
+  font-family: var(--font-heading);
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: var(--choc-dark);
+}
+
+.product-desc {
+  font-size: 0.92rem;
+  color: var(--choc-mid);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.product-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 2px dashed rgba(60, 31, 21, 0.16);
+}
+
+.product-price {
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: var(--choc-dark);
+}
+
+.btn-add-item {
+  background: var(--choc-dark);
+  color: var(--bg-cream);
+  border: 2px solid var(--choc-dark);
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: all 0.25s var(--bounce-ease);
+}
+
+.btn-add-item:hover {
+  background: var(--caramel);
+  color: var(--choc-dark);
+  transform: scale(1.05);
+}
+
+/* ==========================================================================
+   SEÇÃO SOBRE / ENCOMENDAS & REDIRECT IFOOD EM FLORIANÓPOLIS + RODAPÉ COM CNPJ
+   ========================================================================== */
+.ifood-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(229, 169, 59, 0.22);
+  border: 1.5px solid var(--caramel);
+  color: var(--caramel-light);
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  margin-bottom: 16px;
+}
+
+.ifood-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--caramel);
+  display: inline-block;
+  animation: pulseDot 1.8s infinite;
+}
+
+.delivery-cta-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.delivery-banner {
+  background: var(--choc-dark);
+  color: var(--bg-cream);
+  border-radius: 32px;
+  padding: 48px;
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  align-items: center;
+  gap: 32px;
+  border: 3px solid var(--choc-dark);
+  box-shadow: 0 10px 0 var(--cookie-gold);
+}
+
+.delivery-banner h2 {
+  font-family: var(--font-heading);
+  font-size: clamp(1.9rem, 3vw, 2.7rem);
+  color: var(--bg-cream);
+  margin-bottom: 14px;
+}
+
+.delivery-banner p {
+  color: rgba(253, 247, 231, 0.86);
+  line-height: 1.6;
+  margin-bottom: 18px;
+}
+
+.bairros-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 26px;
+}
+
+.bairro-tag {
+  background: rgba(253, 247, 231, 0.12);
+  border: 1.5px solid var(--caramel);
+  color: var(--bg-cream);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.site-footer {
+  text-align: center;
+  padding: 40px 24px 56px;
+  border-top: 2px dashed rgba(60, 31, 21, 0.18);
+  color: var(--choc-mid);
+  font-size: 0.94rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.footer-brand-line {
+  color: var(--choc-dark);
+}
+
+.footer-cnpj-line {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--choc-mid);
+  letter-spacing: 0.02em;
+}
+
+/* Toast de Feedback em PT-BR */
+.toast-notification {
+  position: fixed;
+  bottom: 26px;
+  right: 26px;
+  background: var(--choc-dark);
+  color: var(--bg-cream);
+  border: 2.5px solid var(--caramel);
+  border-radius: 18px;
+  padding: 14px 22px;
+  font-weight: 700;
+  font-size: 0.94rem;
+  box-shadow: 0 12px 28px rgba(60, 31, 21, 0.28);
+  z-index: 9000;
+  transform: translateY(120px);
+  opacity: 0;
+  transition: all 0.35s var(--bounce-ease);
+}
+
+.toast-notification.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* ==========================================================================
+   RESPONSIVIDADE
+   ========================================================================== */
+@media (max-width: 1040px) {
+  .navbar {
+    padding: 18px 24px 10px;
+    flex-wrap: wrap;
+  }
+  .hero-body {
+    grid-template-columns: 1fr;
+    padding: 20px 28px 180px;
+    text-align: center;
+  }
+  .hero-copy {
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .hero-cta-row,
+  .hero-badges-row {
+    justify-content: center;
+  }
+  .badges-caption {
+    text-align: left;
+  }
+  .hero-visual-stage {
+    height: 410px;
+    max-width: 540px;
+    margin: 0 auto;
+  }
+  .packaging-showcase {
+    grid-template-columns: 1fr;
+  }
+  .delivery-banner {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+  .bairros-list {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-shell {
+    padding: 10px 12px 0;
+  }
+  .nav-links {
+    gap: 16px;
+    font-size: 0.9rem;
+    width: 100%;
+    justify-content: center;
+    order: 3;
+  }
+  .hero-headline {
+    font-size: 2.35rem;
+  }
+  .hero-main-logo-wrap {
+    width: 230px;
+    height: 230px;
+  }
+  .floating-cookie-left {
+    width: 98px;
+    height: 98px;
+  }
+  .floating-truffle-cone {
+    width: 122px;
+    height: 175px;
+  }
+}
