@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Ana's Bakery — Gestão Financeira &amp; Precificação | Florianópolis</title>
+  <link rel="icon" type="image/png" href="assets/logo.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="gestao.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ==================== SIDEBAR (DESKTOP) ==================== -->
+    <aside class="sidebar">
+      <div class="brand-box">
+        <img src="assets/logo.png" alt="Logo Ana's Bakery" class="brand-logo" />
+        <div>
+          <div class="brand-title">Ana's Bakery</div>
+          <div class="brand-subtitle">Gestão Financeira • SC</div>
+        </div>
+      </div>
+
+      <ul class="nav-list" role="tablist">
+        <li>
+          <button class="nav-btn active" data-tab="dashboard" type="button">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+            Visão Geral
+          </button>
+        </li>
+        <li>
+          <button class="nav-btn" data-tab="insumos" type="button">
+            <svg viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            Insumos &amp; Estoque
+          </button>
+        </li>
+        <li>
+          <button class="nav-btn" data-tab="receitas" type="button">
+            <svg viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M8 7h6"/><path d="M8 11h8"/></svg>
+            Fichas Técnicas
+          </button>
+        </li>
+        <li>
+          <button class="nav-btn" data-tab="precificacao" type="button">
+            <svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Precificação &amp; iFood
+          </button>
+        </li>
+        <li>
+          <button class="nav-btn" data-tab="investimento" type="button">
+            <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+            Investimento &amp; Compras
+          </button>
+        </li>
+        <li>
+          <button class="nav-btn" data-tab="pedidos" type="button">
+            <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6"/><path d="M9 16h4"/></svg>
+            Pedidos Internos
+          </button>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div class="backup-row">
+          <button id="btn-export-json" class="btn btn-secondary btn-sm" type="button" title="Exportar backup JSON">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exportar
+          </button>
+          <button id="btn-import-json" class="btn btn-secondary btn-sm" type="button" title="Importar backup JSON">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Importar
+          </button>
+          <input id="input-import-file" type="file" accept="application/json,.json" hidden />
+        </div>
+        <button id="btn-reset-data" class="btn btn-ghost btn-sm" type="button">
+          Restaurar dados iniciais
+        </button>
+        <a href="/gestao?logout=1" class="btn btn-danger-ghost btn-sm" style="justify-content:flex-start;">
+          🔒 Sair / Bloquear acesso
+        </a>
+        <a href="index.html" class="btn btn-ghost btn-sm" style="justify-content:flex-start;">
+          ← Voltar ao site vitrine
+        </a>
+      </div>
+    </aside>
+
+    <!-- ==================== CONTEÚDO PRINCIPAL ==================== -->
+    <div class="main-area">
+      <header class="topbar">
+        <div class="topbar-left">
+          <h1 id="topbar-title">Visão Geral Financeira</h1>
+          <p id="topbar-subtitle">Resumo de custos, margens e projeção de lucro — Ana's Bakery</p>
+        </div>
+        <div class="topbar-actions">
+          <span class="badge badge-gold" id="badge-storage-status">Sincronizando nuvem...</span>
+          <button class="btn btn-secondary btn-sm" id="btn-sync-cloud" type="button" title="Buscar últimas alterações salvas na nuvem">↻ Atualizar</button>
+          <button class="btn btn-primary btn-sm" id="btn-quick-new-recipe" type="button">+ Nova Receita</button>
+        </div>
+      </header>
+
+      <main class="content-wrap">
+        <!-- ==================== TAB 1: VISÃO GERAL ==================== -->
+        <section id="tab-dashboard" class="tab-panel active">
+          <div class="kpi-grid" id="dashboard-kpis"></div>
+
+          <div class="grid-2" style="margin-bottom:20px;">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Saúde das Margens (Venda Direta)</h2>
+                  <p class="card-desc">Comparativo entre custo unitário, preço direto e margem líquida atual.</p>
+                </div>
+              </div>
+              <div id="dashboard-margins-bars"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Composição da Projeção Atual</h2>
+                  <p class="card-desc">Distribuição entre Lucro Líquido, Insumos, Custos Indiretos e Taxas iFood.</p>
+                </div>
+              </div>
+              <div id="dashboard-projection-svg" class="chart-box"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Resumo Rápido do Cardápio</h2>
+                <p class="card-desc">Valores atualizados automaticamente conforme o preço dos insumos no estoque base.</p>
+              </div>
+              <button class="btn btn-secondary btn-sm" data-goto-tab="precificacao" type="button">Ajustar Preços →</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Produto</th>
+                    <th class="td-right">Custo Unit.</th>
+                    <th class="td-right">Preço Direto</th>
+                    <th class="td-right">Lucro Direto</th>
+                    <th class="td-right">Margem</th>
+                    <th class="td-right">iFood Básico</th>
+                    <th class="td-right">iFood Entrega</th>
+                  </tr>
+                </thead>
+                <tbody id="dashboard-summary-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB 2: INSUMOS & ESTOQUE ==================== -->
+        <section id="tab-insumos" class="tab-panel">
+          <div class="toolbar">
+            <div class="search-group">
+              <input id="insumo-search" type="search" class="input" placeholder="Buscar insumo ou embalagem..." style="min-width:240px;" />
+              <select id="insumo-cat-filter" class="select">
+                <option value="todas">Todas as categorias</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button id="btn-apply-fort-prices" class="btn btn-secondary" type="button" title="Atualizar preços base conforme pesquisa Fort Atacadista Campeche/SC">↻ Aplicar Preços Fort Campeche</button>
+              <button id="btn-add-insumo" class="btn btn-primary" type="button">+ Adicionar Insumo</button>
+            </div>
+          </div>
+
+          <div class="card" style="padding:0; overflow:hidden;">
+            <div class="table-wrap" style="border:none; border-radius:0;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Insumo / Embalagem</th>
+                    <th>Categoria</th>
+                    <th class="td-right">Preço Pago (R$)</th>
+                    <th class="td-right">Qtd. Embalagem</th>
+                    <th>Unidade</th>
+                    <th class="td-right">Custo por Unid./g/ml</th>
+                    <th class="td-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="insumos-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB 3: FICHAS TÉCNICAS & RECEITAS ==================== -->
+        <section id="tab-receitas" class="tab-panel">
+          <div class="toolbar">
+            <div class="search-group">
+              <button class="btn btn-secondary btn-sm recipe-filter active" data-recipe-filter="todos" type="button">Todas</button>
+              <button class="btn btn-secondary btn-sm recipe-filter" data-recipe-filter="subreceita" type="button">Sub-receitas (Massas &amp; Recheios)</button>
+              <button class="btn btn-secondary btn-sm recipe-filter" data-recipe-filter="produto" type="button">Produtos Finais</button>
+            </div>
+            <button id="btn-new-recipe" class="btn btn-primary" type="button">+ Criar Receita / Sub-receita</button>
+          </div>
+
+          <div class="recipes-grid" id="recipes-grid"></div>
+        </section>
+
+        <!-- ==================== TAB 4: PRECIFICAÇÃO MULTI-CANAL & COMBOS ==================== -->
+        <section id="tab-precificacao" class="tab-panel">
+          <div class="config-strip">
+            <div class="field-group">
+              <label for="cfg-margem-min">Margem Líquida Mínima (%)</label>
+              <input id="cfg-margem-min" type="number" step="0.5" min="0" max="95" class="input input-num" style="width:130px;" />
+            </div>
+            <div class="field-group">
+              <label for="cfg-ifood-basico">Taxa iFood Plano Básico (%)</label>
+              <input id="cfg-ifood-basico" type="number" step="0.1" min="0" max="60" class="input input-num" style="width:130px;" />
+            </div>
+            <div class="field-group">
+              <label for="cfg-ifood-entrega">Taxa iFood Plano Entrega (%)</label>
+              <input id="cfg-ifood-entrega" type="number" step="0.1" min="0" max="60" class="input input-num" style="width:130px;" />
+            </div>
+            <div style="margin-left:auto; font-size:0.82rem; color:var(--text-muted); max-width:340px;">
+              Os preços sugeridos no iFood garantem que você receba <strong>exatamente o mesmo valor líquido</strong> da venda direta.
+            </div>
+          </div>
+
+          <div id="pricing-cards-container"></div>
+
+          <!-- Simulador de Combos -->
+          <div class="card" style="margin-top:24px;">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Simulador de Combos &amp; Caixas Presenteáveis</h2>
+                <p class="card-desc">Monte uma caixa combinada somando custos unitários exatos e proteja sua margem de lucro.</p>
+              </div>
+              <button id="btn-add-combo-item" class="btn btn-secondary btn-sm" type="button">+ Adicionar Doce ao Combo</button>
+            </div>
+
+            <div class="grid-2">
+              <div>
+                <div class="field-group" style="margin-bottom:12px;">
+                  <label for="combo-nome">Nome do Combo</label>
+                  <input id="combo-nome" type="text" class="input" />
+                </div>
+
+                <div id="combo-items-list" style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;"></div>
+
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding-top:10px; border-top:1px dashed var(--border-gold);">
+                  <label style="display:flex; align-items:center; gap:8px; font-size:0.86rem; font-weight:600; cursor:pointer;">
+                    <input id="combo-emb-familia" type="checkbox" />
+                    Incluir Caixa/Embalagem Família (+<span id="combo-emb-price">R$ 2,50</span>)
+                  </label>
+
+                  <div class="field-group" style="flex-direction:row; align-items:center; gap:8px;">
+                    <label for="combo-desconto" style="margin:0;">Desconto Promocional (%):</label>
+                    <input id="combo-desconto" type="number" min="0" max="60" step="1" class="input input-num" style="width:76px;" />
+                  </div>
+                </div>
+              </div>
+
+              <div id="combo-result-box" class="channel-box highlight" style="display:flex; flex-direction:column; justify-content:space-between; gap:12px;"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB 5: INVESTIMENTO & COMPRAS ==================== -->
+        <section id="tab-investimento" class="tab-panel">
+          <div class="kpi-grid" id="invest-kpis"></div>
+
+          <div class="grid-2" style="margin-bottom:20px;">
+            <!-- Planejador de Fornadas -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">1. Planejador de Produção (Fornadas)</h2>
+                  <p class="card-desc">Defina quantas receitas/fornadas de cada doce você pretende produzir no período.</p>
+                </div>
+                <select id="plan-periodo" class="select" style="width:auto;">
+                  <option value="Semanal">Planejamento Semanal</option>
+                  <option value="Mensal">Planejamento Mensal</option>
+                </select>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Produto Final</th>
+                      <th class="td-right">Fornadas</th>
+                      <th class="td-right">Unidades</th>
+                      <th class="td-right">Custo Lote</th>
+                    </tr>
+                  </thead>
+                  <tbody id="production-plan-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Equipamentos e Mix -->
+            <div style="display:flex; flex-direction:column; gap:20px;">
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h2 class="card-title">2. Equipamentos &amp; Custos Fixos Iniciais</h2>
+                    <p class="card-desc">Formas, batedeira, balança, adesivos e taxas para calcular o Ponto de Equilíbrio.</p>
+                  </div>
+                  <button id="btn-add-equip" class="btn btn-secondary btn-sm" type="button">+ Item</button>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Equipamento / Custo Fixo</th>
+                        <th class="td-right">Valor (R$)</th>
+                        <th class="td-right"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="equipments-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h2 class="card-title">3. Mix de Canais de Venda</h2>
+                    <p class="card-desc">Simule a divisão das suas vendas entre Direto e iFood.</p>
+                  </div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                  <div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.84rem; font-weight:700;">
+                      <span>Venda Direta (WhatsApp / Insta / Site)</span>
+                      <span id="mix-direto-lbl" class="tabular">60%</span>
+                    </div>
+                    <input id="mix-direto" type="range" min="0" max="100" value="60" />
+                  </div>
+                  <div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.84rem; font-weight:700;">
+                      <span>iFood Plano Básico</span>
+                      <span id="mix-basico-lbl" class="tabular">25%</span>
+                    </div>
+                    <input id="mix-basico" type="range" min="0" max="100" value="25" />
+                  </div>
+                  <div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.84rem; font-weight:700;">
+                      <span>iFood Plano Entrega</span>
+                      <span id="mix-entrega-lbl" class="tabular">15%</span>
+                    </div>
+                    <input id="mix-entrega" type="range" min="0" max="100" value="15" />
+                  </div>
+                  <div style="font-size:0.78rem; color:var(--text-muted);" id="mix-total-note">
+                    Total normalizado automaticamente para 100% nas projeções.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ponto de Equilíbrio & Gráfico Financeiro -->
+          <div class="grid-2" style="margin-bottom:20px;">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Ponto de Equilíbrio (Break-even)</h2>
+                  <p class="card-desc">Quantas unidades você precisa vender para pagar todo o investimento inicial (Equipamentos + Capital de Giro em Insumos).</p>
+                </div>
+              </div>
+              <div id="breakeven-container"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Projeção: Receita vs. Custos vs. Lucro</h2>
+                  <p class="card-desc">Visão financeira consolidada do período planejado.</p>
+                </div>
+              </div>
+              <div id="invest-chart-svg" class="chart-box"></div>
+            </div>
+          </div>
+
+          <!-- Lista de Compras Agrupada -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Lista de Compras Agrupada (Atacado)</h2>
+                <p class="card-desc">Consolidação automática de todos os insumos necessários, arredondada em embalagens fechadas.</p>
+              </div>
+              <button id="btn-copy-shopping" class="btn btn-secondary btn-sm" type="button">Copiar Lista de Compras</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Insumo / Embalagem</th>
+                    <th class="td-right">Qtd. Necessária</th>
+                    <th class="td-right">Embalagens a Comprar</th>
+                    <th class="td-right">Sobra em Estoque</th>
+                    <th class="td-right">Custo Consumido</th>
+                    <th class="td-right">Investimento na Compra</th>
+                  </tr>
+                </thead>
+                <tbody id="shopping-list-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB 6: PEDIDOS INTERNOS (PRESENCIAIS) ==================== -->
+        <section id="tab-pedidos" class="tab-panel">
+          <div class="kpi-grid" id="pedidos-kpis"></div>
+
+          <div class="toolbar">
+            <div class="search-group">
+              <select id="pedido-status-filter" class="select">
+                <option value="todos">Todos os status</option>
+                <option value="orcamento">Orçamento / Aguardando</option>
+                <option value="confirmado">Confirmado</option>
+                <option value="producao">Em Produção</option>
+                <option value="entregue">Entregue</option>
+                <option value="cancelado">Cancelado</option>
+              </select>
+            </div>
+            <button id="btn-add-pedido" class="btn btn-primary" type="button">+ Novo Pedido Presencial</button>
+          </div>
+
+          <div id="pedidos-list-container" style="display:flex; flex-direction:column; gap:18px;"></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- ==================== NAVEGAÇÃO MOBILE ==================== -->
+  <nav class="mobile-nav" aria-label="Navegação Mobile">
+    <button class="mobile-nav-btn active" data-tab="dashboard" type="button">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+      Resumo
+    </button>
+    <button class="mobile-nav-btn" data-tab="insumos" type="button">
+      <svg viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg>
+      Insumos
+    </button>
+    <button class="mobile-nav-btn" data-tab="receitas" type="button">
+      <svg viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+      Receitas
+    </button>
+    <button class="mobile-nav-btn" data-tab="precificacao" type="button">
+      <svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Preços
+    </button>
+    <button class="mobile-nav-btn" data-tab="investimento" type="button">
+      <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+      Compras
+    </button>
+    <button class="mobile-nav-btn" data-tab="pedidos" type="button">
+      <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+      Pedidos
+    </button>
+  </nav>
+
+  <!-- ==================== MODAL DE RECEITA ==================== -->
+  <div id="recipe-modal-backdrop" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="recipe-modal-title" style="font-size:1.25rem;">Editar Receita</h2>
+        <button id="btn-close-recipe-modal" class="btn btn-ghost btn-sm" type="button">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="rm-id" />
+        <div class="grid-2">
+          <div class="field-group">
+            <label for="rm-nome">Nome da Receita / Produto</label>
+            <input id="rm-nome" type="text" class="input" />
+          </div>
+          <div class="field-group">
+            <label for="rm-tipo">Tipo</label>
+            <select id="rm-tipo" class="select">
+              <option value="produto">Produto Final (para venda)</option>
+              <option value="subreceita">Sub-receita (massa / recheio)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="field-group">
+            <label for="rm-rendimento">Rendimento Real</label>
+            <input id="rm-rendimento" type="number" step="0.1" min="0.1" class="input input-num" />
+          </div>
+          <div class="field-group">
+            <label for="rm-unidade">Unidade do Rendimento</label>
+            <input id="rm-unidade" type="text" class="input" placeholder="un, g, porções" />
+          </div>
+          <div class="field-group">
+            <label for="rm-indiretos">Custos Indiretos (%)</label>
+            <input id="rm-indiretos" type="number" step="1" min="0" max="100" class="input input-num" />
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+          <strong style="font-size:0.9rem;">Ingredientes &amp; Sub-receitas</strong>
+          <div style="display:flex; gap:8px;">
+            <button id="rm-add-insumo" class="btn btn-secondary btn-sm" type="button">+ Insumo</button>
+            <button id="rm-add-sub" class="btn btn-secondary btn-sm" type="button">+ Sub-receita</button>
+          </div>
+        </div>
+
+        <div id="rm-items-container" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-delete-recipe" class="btn btn-danger-ghost" type="button" style="margin-right:auto;">Excluir Receita</button>
+        <button id="btn-cancel-recipe-modal" class="btn btn-secondary" type="button">Cancelar</button>
+        <button id="btn-save-recipe-modal" class="btn btn-primary" type="button">Salvar Receita</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="gestao-data.js"></script>
+  <script src="gestao.js"></script>
+</body>
+</html>

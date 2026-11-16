@@ -1,7 +1,19 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "cleanUrls": true,
   "trailingSlash": false,
+  "proxy": {
+    "entrypoint": "proxy.js",
+    "matcher": [
+      "/gestao",
+      "/gestao.html",
+      "/gestao.css",
+      "/gestao.js",
+      "/gestao-data.js",
+      "/api/gestao-state"
+    ]
+  },
   "headers": [
     {
       "source": "/assets/(.*)",
@@ -9,6 +21,19 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/gestao(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, max-age=0"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
         }
       ]
     }
