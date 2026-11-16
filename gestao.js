@@ -5,6 +5,12 @@
 (function () {
   'use strict';
 
+  const THEME_KEY = 'anas_bakery_theme';
+  const FALLBACK_ALREADY_SPENT = [
+    { id: 'gasto-testes', nome: 'Ingredientes e testes para validar receitas', valor: 350.00 },
+    { id: 'gasto-dominio', nome: 'Registro do domínio do site (anasbakery.com.br)', valor: 40.00 },
+  ];
+
   function clone(obj) {
     return JSON.parse(JSON.stringify(obj));
   }
@@ -18,13 +24,64 @@
       .replace(/'/g, '&#39;');
   }
 
+  function parseLocaleNumber(val) {
+    if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+    let s = String(val ?? '').trim().replace(/R\$/gi, '').replace(/\s+/g, '');
+    if (!s) return 0;
+    const lastComma = s.lastIndexOf(',');
+    const lastDot = s.lastIndexOf('.');
+    if (lastComma !== -1 && lastDot !== -1) {
+      if (lastComma > lastDot) {
+        s = s.replace(/\./g, '').replace(',', '.');
+      } else {
+        s = s.replace(/,/g, '');
+      }
+    } else if (lastComma !== -1) {
+      s = s.replace(',', '.');
+    }
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function formatInputNumber(val) {
+    const num = Number(val);
+    if (!Number.isFinite(num)) return '0';
+    return String(num).replace('.', ',');
+  }
+
+  function getDefaultAlreadySpent() {
+    return typeof DEFAULT_ALREADY_SPENT !== 'undefined'
+      ? clone(DEFAULT_ALREADY_SPENT)
+      : clone(FALLBACK_ALREADY_SPENT);
+  }
+
+  function normalizeEquipments(list) {
+    return list.map((eq) => ({
+      ...eq,
+      valor: Number(eq.valor || 0),
+      jaPago: Boolean(eq.jaPago),
+    }));
+  }
+
+  function normalizeAlreadySpent(list) {
+    return list.map((item) => ({
+      ...item,
+      valor: Number(item.valor || 0),
+    }));
+  }
+
   function normalizeState(parsed) {
     if (parsed && Array.isArray(parsed.ingredients) && Array.isArray(parsed.recipes)) {
       return {
         config: { ...clone(DEFAULT_CONFIG), ...(parsed.config || {}) },
         ingredients: parsed.ingredients,
         recipes: parsed.recipes,
-        equipments: Array.isArray(parsed.equipments) ? parsed.equipments : clone(DEFAULT_EQUIPMENTS),
+        equipments: normalizeEquipments(
+          Array.isArray(parsed.equipments) ? parsed.equipments : clone(DEFAULT_EQUIPMENTS)
+        ),
+        alreadySpent: normalizeAlreadySpent(
+          Array.isArray(parsed.alreadySpent) ? parsed.alreadySpent : getDefaultAlreadySpent()
+        ),
         combo: parsed.combo ? { ...clone(DEFAULT_COMBO), ...parsed.combo } : clone(DEFAULT_COMBO),
         mix: parsed.mix || { direto: 60, basico: 25, entrega: 15 },
         periodo: parsed.periodo || 'Semanal',
@@ -35,12 +92,57 @@
       config: clone(DEFAULT_CONFIG),
       ingredients: clone(DEFAULT_INGREDIENTS),
       recipes: clone(DEFAULT_RECIPES),
-      equipments: clone(DEFAULT_EQUIPMENTS),
+      equipments: normalizeEquipments(clone(DEFAULT_EQUIPMENTS)),
+      alreadySpent: getDefaultAlreadySpent(),
       combo: clone(DEFAULT_COMBO),
       mix: { direto: 60, basico: 25, entrega: 15 },
       periodo: 'Semanal',
       internalOrders: clone(DEFAULT_INTERNAL_ORDERS),
     };
+  }
+
+  function getInvestmentProjection(mix) {
+    const proj = calculateShoppingListAndProjection(state, mix);
+    if (typeof proj.totalJaInvestido === 'number') {
+      return proj;
+    }
+    const totalJaGastoItens = (state.alreadySpent || []).reduce((acc, item) => acc + Math.max(0, Number(item.valor || 0)), 0);
+    const totalEquipamentosPagos = (state.equipments || []).reduce((acc, eq) => acc + (eq.jaPago ? Math.max(0, Number(eq.valor || 0)) : 0), 0);
+    const totalEquipamentosAComprar = (state.equipments || []).reduce((acc, eq) => acc + (!eq.jaPago ? Math.max(0, Number(eq.valor || 0)) : 0), 0);
+    const totalJaInvestido = totalJaGastoItens + totalEquipamentosPagos;
+    const totalAComprarGeral = totalEquipamentosAComprar + proj.investimentoCompraFechada;
+    const totalEquipamentos = totalEquipamentosPagos + totalEquipamentosAComprar;
+    const investimentoTotalInicial = totalJaInvestido + totalAComprarGeral;
+    return {
+      ...proj,
+      totalJaGastoItens,
+      totalEquipamentosPagos,
+      totalEquipamentosAComprar,
+      totalJaInvestido,
+      totalAComprarGeral,
+      totalEquipamentos,
+      investimentoTotalInicial,
+    };
+  }
+
+  function syncThemeButton() {
+    const btn = document.getElementById('btn-theme-toggle');
+    if (!btn) return;
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    btn.textContent = isDark ? '☀️ Claro' : '🌙 Escuro';
+    btn.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+  }
+
+  function toggleTheme() {
+    const nextDark = document.documentElement.getAttribute('data-theme') !== 'dark';
+    if (nextDark) document.documentElement.setAttribute('data-theme', 'dark');
+    else document.documentElement.removeAttribute('data-theme');
+    try {
+      localStorage.setItem(THEME_KEY, nextDark ? 'dark' : 'light');
+    } catch (e) {
+      console.warn('Erro ao salvar tema:', e);
+    }
+    syncThemeButton();
   }
 
   function loadState() {
@@ -236,7 +338,7 @@
   // ======================== TAB 1: DASHBOARD ========================
   function renderDashboard() {
     const mix = getNormalizedMix();
-    const proj = calculateShoppingListAndProjection(state, mix);
+    const proj = getInvestmentProjection(mix);
     const produtos = proj.productSummaries;
     const lowMarginCount = produtos.filter((p) => p.pricing.status !== 'saudavel').length;
     const margemMedia = produtos.length
@@ -247,7 +349,7 @@
       <div class="kpi-card">
         <span class="kpi-label">Faturamento Projetado (${escapeHtml(state.periodo)})</span>
         <span class="kpi-value gold">${formatBRL(proj.receitaBrutaMix)}</span>
-        <span class="kpi-sub">${proj.totalUnidadesProduzidas} unidades planejadas</span>
+        <span class="kpi-sub">${formatNum(proj.totalUnidadesProduzidas, 0)} unidades planejadas</span>
       </div>
       <div class="kpi-card">
         <span class="kpi-label">Lucro Líquido Estimado</span>
@@ -309,10 +411,10 @@
 
   function buildFinancialSvgChart(proj) {
     const items = [
-      { label: 'Receita Bruta', val: proj.receitaBrutaMix, color: '#C58C3E' },
-      { label: 'Custo Produção', val: proj.custoProducaoTotal, color: '#8A5A44' },
-      { label: 'Taxas iFood', val: proj.taxasAppMix, color: '#E5A93B' },
-      { label: 'Lucro Líquido', val: Math.max(0, proj.lucroLiquidoMix), color: '#4F7242' },
+      { label: 'Receita Bruta', val: proj.receitaBrutaMix, color: 'var(--chart-rev)' },
+      { label: 'Custo Produção', val: proj.custoProducaoTotal, color: 'var(--chart-cost)' },
+      { label: 'Taxas iFood', val: proj.taxasAppMix, color: 'var(--chart-fee)' },
+      { label: 'Lucro Líquido', val: Math.max(0, proj.lucroLiquidoMix), color: 'var(--chart-profit)' },
     ];
     const maxVal = Math.max(1, ...items.map((i) => i.val));
     const width = 460;
@@ -330,32 +432,34 @@
       return `
         <g>
           <rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="8" fill="${item.color}" />
-          <text x="${x + barW / 2}" y="${y - 8}" text-anchor="middle" font-size="11.5" font-weight="700" fill="#3C1F15">${formatBRL(item.val)}</text>
-          <text x="${x + barW / 2}" y="${baseY + 18}" text-anchor="middle" font-size="11" font-weight="600" fill="#765748">${item.label}</text>
+          <text x="${x + barW / 2}" y="${y - 8}" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--text-choco)">${formatBRL(item.val)}</text>
+          <text x="${x + barW / 2}" y="${baseY + 18}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--text-muted)">${item.label}</text>
         </g>
       `;
     }).join('');
 
     return `
       <svg viewBox="0 0 ${width} ${height}" width="100%" height="210" role="img" aria-label="Gráfico financeiro de projeção">
-        <line x1="20" y1="${baseY}" x2="${width - 20}" y2="${baseY}" stroke="#E6D5B8" stroke-width="1.5" />
+        <line x1="20" y1="${baseY}" x2="${width - 20}" y2="${baseY}" stroke="var(--border-gold)" stroke-width="1.5" />
         ${bars}
       </svg>
     `;
   }
 
   // ======================== TAB 2: INSUMOS ========================
-  function renderInsumos() {
-    const search = (document.getElementById('insumo-search').value || '').toLowerCase();
-    const catFilter = document.getElementById('insumo-cat-filter').value;
-
-    // Atualiza opções de categoria
+  function refreshInsumoCategoryFilterOptions() {
     const cats = [...new Set(state.ingredients.map((i) => i.categoria))].sort();
     const catSelect = document.getElementById('insumo-cat-filter');
     const prevVal = catSelect.value;
     catSelect.innerHTML = `<option value="todas">Todas as categorias</option>` +
       cats.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     catSelect.value = cats.includes(prevVal) ? prevVal : 'todas';
+  }
+
+  function renderInsumos() {
+    const search = (document.getElementById('insumo-search').value || '').toLowerCase();
+    refreshInsumoCategoryFilterOptions();
+    const catFilter = document.getElementById('insumo-cat-filter').value;
 
     const filtered = state.ingredients.filter((ing) => {
       const matchSearch = ing.nome.toLowerCase().includes(search) || (ing.obs || '').toLowerCase().includes(search);
@@ -375,10 +479,10 @@
             <input class="input-inline" data-field="categoria" value="${escapeHtml(ing.categoria)}" style="min-width:120px;" />
           </td>
           <td class="td-right">
-            <input class="input-inline input-num" type="number" step="0.01" min="0" data-field="preco" value="${ing.preco}" style="max-width:95px;" />
+            <input class="input-inline input-num" type="text" inputmode="decimal" data-field="preco" value="${formatNum(ing.preco, 2)}" style="max-width:105px;" />
           </td>
           <td class="td-right">
-            <input class="input-inline input-num" type="number" step="0.1" min="0.1" data-field="quantidade" value="${ing.quantidade}" style="max-width:95px;" />
+            <input class="input-inline input-num" type="text" inputmode="decimal" data-field="quantidade" value="${formatInputNumber(ing.quantidade)}" style="max-width:95px;" />
           </td>
           <td>
             <select class="input-inline" data-field="unidade" style="min-width:68px;">
@@ -432,14 +536,14 @@
             <div class="recipe-meta-item">
               <label>Rendimento Real</label>
               <div style="display:flex; align-items:center; gap:5px;">
-                <input class="input-inline input-num rec-inline-rend" type="number" step="1" min="1" value="${rec.rendimento}" style="max-width:66px;" />
+                <input class="input-inline input-num rec-inline-rend" type="text" inputmode="decimal" value="${formatInputNumber(rec.rendimento)}" style="max-width:66px;" />
                 <span style="font-size:0.8rem; color:var(--text-muted);">${escapeHtml(rec.unidadeRendimento)}</span>
               </div>
             </div>
             <div class="recipe-meta-item">
               <label>Indiretos (Gás/Luz)</label>
               <div style="display:flex; align-items:center; gap:4px;">
-                <input class="input-inline input-num rec-inline-ind" type="number" step="1" min="0" max="100" value="${rec.custosIndiretosPct}" style="max-width:60px;" />
+                <input class="input-inline input-num rec-inline-ind" type="text" inputmode="decimal" value="${formatInputNumber(rec.custosIndiretosPct)}" style="max-width:60px;" />
                 <span style="font-size:0.8rem; color:var(--text-muted);">%</span>
               </div>
             </div>
@@ -454,12 +558,12 @@
           <ul class="recipe-items-list">
             ${itemsHtml}
             <li class="recipe-item-row" style="border-top:1px solid var(--border-gold); padding-top:6px; margin-top:4px; font-weight:700;">
-              <span>Custos Indiretos (${formatNum(rec.custosIndiretosPct, 0)}%)</span>
-              <span>${formatBRL(calc.custoIndiretos)}</span>
+              <span class="rec-ind-label">Custos Indiretos (${formatNum(rec.custosIndiretosPct, 0)}%)</span>
+              <span class="rec-ind-cost">${formatBRL(calc.custoIndiretos)}</span>
             </li>
             <li class="recipe-item-row" style="font-weight:800; color:var(--text-choco);">
               <span>Custo Total da Receita</span>
-              <span>${formatBRL(calc.custoTotal)}</span>
+              <span class="rec-total-cost">${formatBRL(calc.custoTotal)}</span>
             </li>
           </ul>
         </article>
@@ -468,10 +572,65 @@
   }
 
   // ======================== TAB 4: PRECIFICAÇÃO & COMBOS ========================
+  function buildPricingAlertHtml(p) {
+    if (p.status === 'prejuizo') {
+      return `
+        <div class="alert-banner terracotta">
+          <span>⚠️ <strong>Prejuízo!</strong> O preço de ${formatBRL(p.precoDireto)} está abaixo do custo unitário (${formatBRL(p.custoUnitario)}). Recomendado mínimo: ${formatBRL(p.precoMinimoRecomendado)}.</span>
+        </div>
+      `;
+    }
+    if (p.status === 'baixa') {
+      return `
+        <div class="alert-banner amber">
+          <span>⚡ <strong>Margem abaixo da meta (${formatNum(state.config.margemMinima, 0)}%):</strong> Margem atual de ${formatNum(p.margemDiretaPct, 1)}%. Para atingir a meta, cobre a partir de ${formatBRL(p.precoMinimoRecomendado)}.</span>
+        </div>
+      `;
+    }
+    return '';
+  }
+
+  function updatePricingCardDOM(card, prod) {
+    const calc = calculateRecipeCost(prod.id, state);
+    const p = calculateChannelPricing(calc.custoUnitario, Number(prod.precoVendaDireta || 0), state.config);
+    const sliderMax = Math.max(25, Math.ceil(p.precoMinimoRecomendado * 2.5));
+    const slider = card.querySelector('.price-slider');
+    if (slider) slider.max = String(sliderMax);
+
+    card.classList.toggle('alert-low', p.status !== 'saudavel');
+    const badge = card.querySelector('.pricing-badge');
+    if (badge) {
+      badge.className = `badge pricing-badge ${p.status === 'saudavel' ? 'badge-olive' : (p.status === 'baixa' ? 'badge-amber' : 'badge-terracotta')}`;
+      badge.textContent = `${formatNum(p.margemDiretaPct, 1)}% margem`;
+    }
+
+    const hint = card.querySelector('.pricing-cost-hint');
+    if (hint) {
+      hint.innerHTML = `Custo Unitário Exato: <strong style="color:var(--text-choco);">${formatBRL(p.custoUnitario)}</strong> • Sugerido p/ ${formatNum(state.config.margemMinima, 0)}%: <strong>${formatBRL(p.precoMinimoRecomendado)}</strong>`;
+    }
+
+    card.querySelector('.pricing-direto-val').textContent = formatBRL(p.precoDireto);
+    card.querySelector('.pricing-direto-lucro').innerHTML = `Lucro líquido: <strong style="color:${p.lucroDireto >= 0 ? 'var(--olive)' : 'var(--terracotta)'}">${formatBRL(p.lucroDireto)}</strong>`;
+    card.querySelector('.pricing-basico-lbl').textContent = `iFood Básico (${formatNum(state.config.taxaIfoodBasico, 1)}%)`;
+    card.querySelector('.pricing-basico-val').textContent = formatBRL(p.ifoodBasico.preco);
+    card.querySelector('.pricing-basico-sub').textContent = `Taxa: -${formatBRL(p.ifoodBasico.taxaRS)} • Líquido: ${formatBRL(p.ifoodBasico.liquido)}`;
+    card.querySelector('.pricing-entrega-lbl').textContent = `iFood Entrega (${formatNum(state.config.taxaIfoodEntrega, 1)}%)`;
+    card.querySelector('.pricing-entrega-val').textContent = formatBRL(p.ifoodEntrega.preco);
+    card.querySelector('.pricing-entrega-sub').textContent = `Taxa: -${formatBRL(p.ifoodEntrega.taxaRS)} • Líquido: ${formatBRL(p.ifoodEntrega.liquido)}`;
+    card.querySelector('.pricing-alert-slot').innerHTML = buildPricingAlertHtml(p);
+  }
+
+  function updateAllPricingCardsDOM() {
+    document.querySelectorAll('#pricing-cards-container .pricing-card').forEach((card) => {
+      const prod = state.recipes.find((r) => r.id === card.dataset.pricingId);
+      if (prod) updatePricingCardDOM(card, prod);
+    });
+  }
+
   function renderPrecificacao() {
-    document.getElementById('cfg-margem-min').value = state.config.margemMinima;
-    document.getElementById('cfg-ifood-basico').value = state.config.taxaIfoodBasico;
-    document.getElementById('cfg-ifood-entrega').value = state.config.taxaIfoodEntrega;
+    document.getElementById('cfg-margem-min').value = formatInputNumber(state.config.margemMinima);
+    document.getElementById('cfg-ifood-basico').value = formatInputNumber(state.config.taxaIfoodBasico);
+    document.getElementById('cfg-ifood-entrega').value = formatInputNumber(state.config.taxaIfoodEntrega);
 
     const produtos = state.recipes.filter((r) => r.tipo === 'produto');
     const container = document.getElementById('pricing-cards-container');
@@ -480,22 +639,6 @@
       const calc = calculateRecipeCost(prod.id, state);
       const p = calculateChannelPricing(calc.custoUnitario, Number(prod.precoVendaDireta || 0), state.config);
       const sliderMax = Math.max(25, Math.ceil(p.precoMinimoRecomendado * 2.5));
-
-      let alertHtml = '';
-      if (p.status === 'prejuizo') {
-        alertHtml = `
-          <div class="alert-banner terracotta">
-            <span>⚠️ <strong>Prejuízo!</strong> O preço de ${formatBRL(p.precoDireto)} está abaixo do custo unitário (${formatBRL(p.custoUnitario)}). Recomendado mínimo: ${formatBRL(p.precoMinimoRecomendado)}.</span>
-          </div>
-        `;
-      } else if (p.status === 'baixa') {
-        alertHtml = `
-          <div class="alert-banner amber">
-            <span>⚡ <strong>Margem abaixo da meta (${formatNum(state.config.margemMinima, 0)}%):</strong> Margem atual de ${formatNum(p.margemDiretaPct, 1)}%. Para atingir a meta, cobre a partir de ${formatBRL(p.precoMinimoRecomendado)}.</span>
-          </div>
-        `;
-      }
-
       const badgeClass = p.status === 'saudavel' ? 'badge-olive' : (p.status === 'baixa' ? 'badge-amber' : 'badge-terracotta');
 
       return `
@@ -506,13 +649,13 @@
                 <h3 style="font-size:1.1rem;">${escapeHtml(prod.nome)}</h3>
                 <span class="badge ${badgeClass} pricing-badge">${formatNum(p.margemDiretaPct, 1)}% margem</span>
               </div>
-              <div style="font-size:0.83rem; color:var(--text-muted); margin-bottom:10px;">
+              <div class="pricing-cost-hint" style="font-size:0.83rem; color:var(--text-muted); margin-bottom:10px;">
                 Custo Unitário Exato: <strong style="color:var(--text-choco);">${formatBRL(p.custoUnitario)}</strong>
                 • Sugerido p/ ${formatNum(state.config.margemMinima, 0)}%: <strong>${formatBRL(p.precoMinimoRecomendado)}</strong>
               </div>
               <div style="display:flex; align-items:center; gap:10px;">
                 <input type="range" class="price-slider" min="1" max="${sliderMax}" step="0.5" value="${p.precoDireto}" />
-                <input type="number" class="input input-num price-input" min="0" step="0.5" value="${p.precoDireto.toFixed(2)}" style="width:96px;" />
+                <input type="text" inputmode="decimal" class="input input-num price-input" value="${formatNum(p.precoDireto, 2)}" style="width:96px;" />
               </div>
             </div>
 
@@ -525,7 +668,7 @@
             </div>
 
             <div class="channel-box">
-              <div class="channel-label">iFood Básico (${formatNum(state.config.taxaIfoodBasico, 1)}%)</div>
+              <div class="channel-label pricing-basico-lbl">iFood Básico (${formatNum(state.config.taxaIfoodBasico, 1)}%)</div>
               <div class="channel-price pricing-basico-val">${formatBRL(p.ifoodBasico.preco)}</div>
               <div class="channel-sub pricing-basico-sub">
                 Taxa: -${formatBRL(p.ifoodBasico.taxaRS)} • Líquido: ${formatBRL(p.ifoodBasico.liquido)}
@@ -533,14 +676,14 @@
             </div>
 
             <div class="channel-box">
-              <div class="channel-label">iFood Entrega (${formatNum(state.config.taxaIfoodEntrega, 1)}%)</div>
+              <div class="channel-label pricing-entrega-lbl">iFood Entrega (${formatNum(state.config.taxaIfoodEntrega, 1)}%)</div>
               <div class="channel-price pricing-entrega-val">${formatBRL(p.ifoodEntrega.preco)}</div>
               <div class="channel-sub pricing-entrega-sub">
                 Taxa: -${formatBRL(p.ifoodEntrega.taxaRS)} • Líquido: ${formatBRL(p.ifoodEntrega.liquido)}
               </div>
             </div>
           </div>
-          <div class="pricing-alert-slot">${alertHtml}</div>
+          <div class="pricing-alert-slot">${buildPricingAlertHtml(p)}</div>
         </div>
       `;
     }).join('');
@@ -548,29 +691,11 @@
     renderComboSimulator();
   }
 
-  function renderComboSimulator() {
-    document.getElementById('combo-nome').value = state.combo.nome;
-    document.getElementById('combo-desconto').value = state.combo.descontoPct;
-    document.getElementById('combo-emb-familia').checked = !!state.combo.incluirEmbalagemFamilia;
-
+  function updateComboResultDOM() {
     const embFam = state.ingredients.find((i) => i.id === 'emb-familia');
     const embPrice = embFam ? getIngredientUnitCost(embFam) : 2.50;
     document.getElementById('combo-emb-price').textContent = formatBRL(embPrice);
 
-    const produtos = state.recipes.filter((r) => r.tipo === 'produto');
-    const listEl = document.getElementById('combo-items-list');
-
-    listEl.innerHTML = state.combo.itens.map((item, idx) => `
-      <div style="display:flex; gap:8px; align-items:center;" data-combo-idx="${idx}">
-        <select class="select combo-item-select" style="flex:1;">
-          ${produtos.map((p) => `<option value="${escapeHtml(p.id)}" ${p.id === item.recipeId ? 'selected' : ''}>${escapeHtml(p.nome)}</option>`).join('')}
-        </select>
-        <input type="number" class="input input-num combo-item-qty" min="1" step="1" value="${item.quantidade}" style="width:74px;" />
-        <button class="btn btn-danger-ghost btn-sm combo-item-del" type="button">✕</button>
-      </div>
-    `).join('');
-
-    // Calcula totais do combo
     let custoCombo = state.combo.incluirEmbalagemFamilia ? embPrice : 0;
     let somaPrecosIndividuais = 0;
 
@@ -617,68 +742,117 @@
     `;
   }
 
-  // ======================== TAB 5: INVESTIMENTO & COMPRAS ========================
-  function renderInvestimento() {
-    document.getElementById('plan-periodo').value = state.periodo;
-    document.getElementById('mix-direto').value = state.mix.direto;
-    document.getElementById('mix-basico').value = state.mix.basico;
-    document.getElementById('mix-entrega').value = state.mix.entrega;
+  function renderComboSimulator() {
+    document.getElementById('combo-nome').value = state.combo.nome;
+    document.getElementById('combo-desconto').value = formatInputNumber(state.combo.descontoPct);
+    document.getElementById('combo-emb-familia').checked = !!state.combo.incluirEmbalagemFamilia;
 
+    const produtos = state.recipes.filter((r) => r.tipo === 'produto');
+    const listEl = document.getElementById('combo-items-list');
+
+    listEl.innerHTML = state.combo.itens.map((item, idx) => `
+      <div style="display:flex; gap:8px; align-items:center;" data-combo-idx="${idx}">
+        <select class="select combo-item-select" style="flex:1;">
+          ${produtos.map((p) => `<option value="${escapeHtml(p.id)}" ${p.id === item.recipeId ? 'selected' : ''}>${escapeHtml(p.nome)}</option>`).join('')}
+        </select>
+        <input type="text" inputmode="numeric" class="input input-num combo-item-qty" value="${formatInputNumber(item.quantidade)}" style="width:74px;" />
+        <button class="btn btn-danger-ghost btn-sm combo-item-del" type="button">✕</button>
+      </div>
+    `).join('');
+
+    updateComboResultDOM();
+  }
+
+  // ======================== TAB 5: INVESTIMENTO & COMPRAS ========================
+  function renderAlreadySpentTable() {
+    const tbody = document.getElementById('already-spent-tbody');
+    const items = state.alreadySpent || [];
+    tbody.innerHTML = items.length
+      ? items.map((item) => `
+          <tr data-spent-id="${escapeHtml(item.id)}">
+            <td><input class="input-inline as-nome-input" value="${escapeHtml(item.nome)}" /></td>
+            <td class="td-right"><input class="input-inline input-num as-valor-input" type="text" inputmode="decimal" value="${formatNum(item.valor, 2)}" style="max-width:110px;" /></td>
+            <td class="td-right"><button class="btn btn-danger-ghost btn-sm as-del-btn" type="button" title="Excluir gasto">✕</button></td>
+          </tr>
+        `).join('')
+      : '<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:14px;">Nenhum gasto inicial registrado.</td></tr>';
+  }
+
+  function renderEquipmentsTable() {
+    const tbody = document.getElementById('equipments-tbody');
+    tbody.innerHTML = state.equipments.length
+      ? state.equipments.map((eq) => `
+          <tr class="${eq.jaPago ? 'eq-row-paid' : ''}" data-equip-id="${escapeHtml(eq.id)}">
+            <td>
+              <label class="eq-paid-toggle" title="Marcar se este equipamento já foi pago">
+                <input type="checkbox" class="eq-pago-checkbox" ${eq.jaPago ? 'checked' : ''} />
+                <span class="eq-paid-lbl">${eq.jaPago ? 'Pago' : 'Falta'}</span>
+              </label>
+            </td>
+            <td><input class="input-inline eq-nome-input" value="${escapeHtml(eq.nome)}" /></td>
+            <td class="td-right"><input class="input-inline input-num eq-valor-input" type="text" inputmode="decimal" value="${formatNum(eq.valor, 2)}" style="max-width:110px;" /></td>
+            <td class="td-right"><button class="btn btn-danger-ghost btn-sm eq-del-btn" type="button" title="Excluir item">✕</button></td>
+          </tr>
+        `).join('')
+      : '<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:14px;">Nenhum equipamento cadastrado.</td></tr>';
+  }
+
+  function renderProductionPlanTable(proj) {
+    document.getElementById('production-plan-tbody').innerHTML = proj.productSummaries.map((p) => `
+      <tr data-plan-id="${escapeHtml(p.recipe.id)}">
+        <td><strong>${escapeHtml(p.recipe.nome)}</strong><br><span style="font-size:0.75rem;color:var(--text-muted);">Rende ${formatInputNumber(p.recipe.rendimento)} ${escapeHtml(p.recipe.unidadeRendimento)}/fornada</span></td>
+        <td class="td-right">
+          <input class="input-inline input-num plan-fornadas-input" type="text" inputmode="numeric" value="${formatInputNumber(p.fornadas)}" style="max-width:74px;" />
+        </td>
+        <td class="td-right plan-unidades-cell">${formatNum(p.unidades, 0)} un</td>
+        <td class="td-right plan-custo-cell">${formatBRL(p.custoTotalLote)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function updateInvestimentoSummaryDOM() {
     const mix = getNormalizedMix();
     document.getElementById('mix-direto-lbl').textContent = `${formatNum(mix.direto, 0)}%`;
     document.getElementById('mix-basico-lbl').textContent = `${formatNum(mix.basico, 0)}%`;
     document.getElementById('mix-entrega-lbl').textContent = `${formatNum(mix.entrega, 0)}%`;
 
-    const proj = calculateShoppingListAndProjection(state, mix);
+    const proj = getInvestmentProjection(mix);
+
+    const asSubtotalEl = document.getElementById('already-spent-subtotal');
+    if (asSubtotalEl) asSubtotalEl.textContent = formatBRL(proj.totalJaGastoItens);
+    const eqPaidEl = document.getElementById('equip-paid-subtotal');
+    if (eqPaidEl) eqPaidEl.textContent = formatBRL(proj.totalEquipamentosPagos);
+    const eqPendingEl = document.getElementById('equip-pending-subtotal');
+    if (eqPendingEl) eqPendingEl.textContent = formatBRL(proj.totalEquipamentosAComprar);
 
     document.getElementById('invest-kpis').innerHTML = `
       <div class="kpi-card">
-        <span class="kpi-label">Capital de Giro (Insumos)</span>
-        <span class="kpi-value gold">${formatBRL(proj.investimentoCompraFechada)}</span>
-        <span class="kpi-sub">Compra fechada no atacado (consumo: ${formatBRL(proj.custoProporcionalConsumido)})</span>
+        <span class="kpi-label">Já Investido (R$)</span>
+        <span class="kpi-value olive">${formatBRL(proj.totalJaInvestido)}</span>
+        <span class="kpi-sub">Gastos: ${formatBRL(proj.totalJaGastoItens)} + Equip. pagos: ${formatBRL(proj.totalEquipamentosPagos)}</span>
       </div>
       <div class="kpi-card">
-        <span class="kpi-label">Equipamentos &amp; Fixos</span>
-        <span class="kpi-value">${formatBRL(proj.totalEquipamentos)}</span>
-        <span class="kpi-sub">Investimento total inicial: ${formatBRL(proj.investimentoTotalInicial)}</span>
+        <span class="kpi-label">O que Temos que Comprar</span>
+        <span class="kpi-value gold">${formatBRL(proj.totalAComprarGeral)}</span>
+        <span class="kpi-sub">Equip.: ${formatBRL(proj.totalEquipamentosAComprar)} + Insumos: ${formatBRL(proj.investimentoCompraFechada)}</span>
       </div>
       <div class="kpi-card">
-        <span class="kpi-label">Receita Bruta (${escapeHtml(state.periodo)})</span>
-        <span class="kpi-value">${formatBRL(proj.receitaBrutaMix)}</span>
-        <span class="kpi-sub">Taxas iFood: ${formatBRL(proj.taxasAppMix)}</span>
+        <span class="kpi-label">Investimento Total Geral</span>
+        <span class="kpi-value">${formatBRL(proj.investimentoTotalInicial)}</span>
+        <span class="kpi-sub">Já investido + O que falta comprar</span>
       </div>
       <div class="kpi-card">
-        <span class="kpi-label">Lucro Líquido Real</span>
+        <span class="kpi-label">Lucro Líquido (${escapeHtml(state.periodo)})</span>
         <span class="kpi-value ${proj.lucroLiquidoMix >= 0 ? 'olive' : 'terracotta'}">${formatBRL(proj.lucroLiquidoMix)}</span>
-        <span class="kpi-sub">${proj.totalUnidadesProduzidas} doces produzidos</span>
+        <span class="kpi-sub">Receita: ${formatBRL(proj.receitaBrutaMix)} • ${formatNum(proj.totalUnidadesProduzidas, 0)} doces</span>
       </div>
     `;
-
-    // Tabela de produção
-    document.getElementById('production-plan-tbody').innerHTML = proj.productSummaries.map((p) => `
-      <tr data-plan-id="${escapeHtml(p.recipe.id)}">
-        <td><strong>${escapeHtml(p.recipe.nome)}</strong><br><span style="font-size:0.75rem;color:var(--text-muted);">Rende ${p.recipe.rendimento} ${escapeHtml(p.recipe.unidadeRendimento)}/fornada</span></td>
-        <td class="td-right">
-          <input class="input-inline input-num plan-fornadas-input" type="number" min="0" step="1" value="${p.fornadas}" style="max-width:74px;" />
-        </td>
-        <td class="td-right">${p.unidades} un</td>
-        <td class="td-right">${formatBRL(p.custoTotalLote)}</td>
-      </tr>
-    `).join('');
-
-    // Equipamentos
-    document.getElementById('equipments-tbody').innerHTML = state.equipments.map((eq) => `
-      <tr data-equip-id="${escapeHtml(eq.id)}">
-        <td><input class="input-inline eq-nome-input" value="${escapeHtml(eq.nome)}" /></td>
-        <td class="td-right"><input class="input-inline input-num eq-valor-input" type="number" step="1" min="0" value="${eq.valor}" style="max-width:100px;" /></td>
-        <td class="td-right"><button class="btn btn-danger-ghost btn-sm eq-del-btn" type="button">✕</button></td>
-      </tr>
-    `).join('');
 
     // Ponto de Equilíbrio (Break-even)
     const totalInvest = proj.investimentoTotalInicial;
     const cyclesToPay = proj.lucroLiquidoMix > 0 ? totalInvest / proj.lucroLiquidoMix : Infinity;
     const unitsBreakEvenMix = proj.lucroMedioPorUnidade > 0 ? Math.ceil(totalInvest / proj.lucroMedioPorUnidade) : Infinity;
+    const unitsBreakEvenAComprar = proj.lucroMedioPorUnidade > 0 ? Math.ceil(proj.totalAComprarGeral / proj.lucroMedioPorUnidade) : Infinity;
 
     const beRows = proj.productSummaries
       .filter((p) => p.pricing.lucroDireto > 0)
@@ -687,18 +861,30 @@
         return `
           <div style="display:flex; justify-content:space-between; font-size:0.84rem; padding:6px 0; border-bottom:1px dashed var(--border-gold);">
             <span>Se vender apenas <strong>${escapeHtml(p.recipe.nome)}</strong> (Direto):</span>
-            <strong class="tabular">${unitsNeeded} un</strong>
+            <strong class="tabular">${formatNum(unitsNeeded, 0)} un</strong>
           </div>
         `;
       }).join('');
 
     document.getElementById('breakeven-container').innerHTML = `
       <div style="background:var(--caramel-soft); border:1px solid var(--border-gold); border-radius:12px; padding:14px; margin-bottom:12px;">
-        <div style="font-size:0.8rem; font-weight:700; text-transform:uppercase; color:var(--text-muted);">Investimento Total a Recuperar</div>
-        <div style="font-family:var(--font-display); font-size:1.55rem; font-weight:800; color:var(--text-choco);">${formatBRL(totalInvest)}</div>
-        <div style="font-size:0.84rem; margin-top:4px;">
+        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; padding-bottom:10px; margin-bottom:10px; border-bottom:1px dashed var(--border-gold);">
+          <div>
+            <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; color:var(--text-muted);">Já Investido</div>
+            <div style="font-family:var(--font-display); font-size:1.1rem; font-weight:800; color:var(--olive);">${formatBRL(proj.totalJaInvestido)}</div>
+          </div>
+          <div>
+            <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; color:var(--text-muted);">Falta Comprar</div>
+            <div style="font-family:var(--font-display); font-size:1.1rem; font-weight:800; color:var(--gold-dark);">${formatBRL(proj.totalAComprarGeral)}</div>
+          </div>
+          <div>
+            <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; color:var(--text-muted);">Total Geral</div>
+            <div style="font-family:var(--font-display); font-size:1.1rem; font-weight:800; color:var(--text-choco);">${formatBRL(totalInvest)}</div>
+          </div>
+        </div>
+        <div style="font-size:0.84rem;">
           ${Number.isFinite(unitsBreakEvenMix)
-            ? `No mix atual, você atinge o ponto de equilíbrio vendendo <strong>${unitsBreakEvenMix} unidades</strong> (~<strong>${formatNum(cyclesToPay, 1)}</strong> ciclos ${state.periodo.toLowerCase()}s).`
+            ? `No mix atual, você recupera todo o investimento geral vendendo <strong>${formatNum(unitsBreakEvenMix, 0)} unidades</strong> (~<strong>${formatNum(cyclesToPay, 1)}</strong> ciclos ${state.periodo.toLowerCase()}s). Só para pagar o que falta comprar, são <strong>${formatNum(unitsBreakEvenAComprar, 0)} unidades</strong>.`
             : 'Ajuste os preços para ter lucro positivo e calcular o ponto de equilíbrio.'}
         </div>
       </div>
@@ -714,13 +900,26 @@
           <tr>
             <td><strong>${escapeHtml(item.ingredient.nome)}</strong></td>
             <td class="td-right">${formatNum(item.needed, item.needed % 1 === 0 ? 0 : 1)} ${escapeHtml(item.ingredient.unidade)}</td>
-            <td class="td-right"><strong>${item.packs}x</strong> (${item.ingredient.quantidade} ${escapeHtml(item.ingredient.unidade)})</td>
+            <td class="td-right"><strong>${formatNum(item.packs, 0)}x</strong> (${formatInputNumber(item.ingredient.quantidade)} ${escapeHtml(item.ingredient.unidade)})</td>
             <td class="td-right">${formatNum(item.sobra, item.sobra % 1 === 0 ? 0 : 1)} ${escapeHtml(item.ingredient.unidade)}</td>
             <td class="td-right">${formatBRL(item.custoConsumido)}</td>
             <td class="td-right"><strong style="color:var(--gold-dark);">${formatBRL(item.custoCompra)}</strong></td>
           </tr>
         `).join('')
       : '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:24px;">Defina pelo menos 1 fornada acima para gerar a lista de compras.</td></tr>';
+  }
+
+  function renderInvestimento() {
+    document.getElementById('plan-periodo').value = state.periodo;
+    document.getElementById('mix-direto').value = state.mix.direto;
+    document.getElementById('mix-basico').value = state.mix.basico;
+    document.getElementById('mix-entrega').value = state.mix.entrega;
+
+    const proj = getInvestmentProjection(getNormalizedMix());
+    renderProductionPlanTable(proj);
+    renderAlreadySpentTable();
+    renderEquipmentsTable();
+    updateInvestimentoSummaryDOM();
   }
 
   // ======================== MODAL DE RECEITA ========================
@@ -752,9 +951,9 @@
     document.getElementById('rm-id').value = modalRecipeDraft.id;
     document.getElementById('rm-nome').value = modalRecipeDraft.nome;
     document.getElementById('rm-tipo').value = modalRecipeDraft.tipo;
-    document.getElementById('rm-rendimento').value = modalRecipeDraft.rendimento;
+    document.getElementById('rm-rendimento').value = formatInputNumber(modalRecipeDraft.rendimento);
     document.getElementById('rm-unidade').value = modalRecipeDraft.unidadeRendimento;
-    document.getElementById('rm-indiretos').value = modalRecipeDraft.custosIndiretosPct;
+    document.getElementById('rm-indiretos').value = formatInputNumber(modalRecipeDraft.custosIndiretosPct);
 
     renderModalItems();
     document.getElementById('recipe-modal-backdrop').classList.add('open');
@@ -778,7 +977,7 @@
       return `
         <div style="display:flex; gap:8px; align-items:center;" data-rm-idx="${idx}">
           <select class="select rm-item-ref" style="flex:1;">${optionsHtml}</select>
-          <input type="number" step="0.1" min="0" class="input input-num rm-item-qty" value="${item.quantidade}" style="width:92px;" />
+          <input type="text" inputmode="decimal" class="input input-num rm-item-qty" value="${formatInputNumber(item.quantidade)}" style="width:92px;" />
           <button class="btn btn-danger-ghost btn-sm rm-item-del" type="button">✕</button>
         </div>
       `;
@@ -787,6 +986,13 @@
 
   // ======================== EVENTOS GLOBAIS ========================
   function bindEvents() {
+    // Tema Claro / Escuro
+    const themeBtn = document.getElementById('btn-theme-toggle');
+    if (themeBtn) {
+      syncThemeButton();
+      themeBtn.addEventListener('click', toggleTheme);
+    }
+
     // Navegação tabs
     document.querySelectorAll('[data-tab]').forEach((btn) => {
       btn.addEventListener('click', () => switchTab(btn.dataset.tab));
@@ -893,10 +1099,28 @@
       if (!ing) return;
       const field = e.target.dataset.field;
       if (!field) return;
-      ing[field] = (field === 'preco' || field === 'quantidade') ? Number(e.target.value || 0) : e.target.value;
+      if (field === 'preco') {
+        ing.preco = Math.max(0, parseLocaleNumber(e.target.value));
+      } else if (field === 'quantidade') {
+        ing.quantidade = Math.max(0.0001, parseLocaleNumber(e.target.value));
+      } else {
+        ing[field] = e.target.value;
+      }
       saveState();
       const costCell = tr.querySelector('.ing-unit-cost');
       if (costCell) costCell.textContent = `${formatBRL(getIngredientUnitCost(ing), 4)} / ${ing.unidade}`;
+    });
+
+    document.getElementById('insumos-tbody').addEventListener('focusout', (e) => {
+      const tr = e.target.closest('tr');
+      if (!tr) return;
+      const ing = state.ingredients.find((i) => i.id === tr.dataset.ingId);
+      if (!ing) return;
+      if (e.target.dataset.field === 'preco') {
+        e.target.value = formatNum(ing.preco, 2);
+      } else if (e.target.dataset.field === 'categoria') {
+        refreshInsumoCategoryFilterOptions();
+      }
     });
 
     document.getElementById('insumos-tbody').addEventListener('change', (e) => {
@@ -906,7 +1130,8 @@
         if (ing) {
           ing.unidade = e.target.value;
           saveState();
-          renderInsumos();
+          const costCell = tr.querySelector('.ing-unit-cost');
+          if (costCell) costCell.textContent = `${formatBRL(getIngredientUnitCost(ing), 4)} / ${ing.unidade}`;
         }
       }
     });
@@ -949,9 +1174,9 @@
       const rec = state.recipes.find((r) => r.id === card.dataset.recipeId);
       if (!rec) return;
       if (e.target.classList.contains('rec-inline-rend')) {
-        rec.rendimento = Math.max(0.1, Number(e.target.value || 1));
+        rec.rendimento = Math.max(0.1, parseLocaleNumber(e.target.value) || 1);
       } else if (e.target.classList.contains('rec-inline-ind')) {
-        rec.custosIndiretosPct = Math.max(0, Number(e.target.value || 0));
+        rec.custosIndiretosPct = Math.max(0, parseLocaleNumber(e.target.value));
       } else {
         return;
       }
@@ -959,6 +1184,12 @@
       const calc = calculateRecipeCost(rec.id, state);
       const unitEl = card.querySelector('.rec-unit-cost');
       if (unitEl) unitEl.textContent = formatBRL(calc.custoUnitario);
+      const indLabelEl = card.querySelector('.rec-ind-label');
+      if (indLabelEl) indLabelEl.textContent = `Custos Indiretos (${formatNum(rec.custosIndiretosPct, 0)}%)`;
+      const indCostEl = card.querySelector('.rec-ind-cost');
+      if (indCostEl) indCostEl.textContent = formatBRL(calc.custoIndiretos);
+      const totalCostEl = card.querySelector('.rec-total-cost');
+      if (totalCostEl) totalCostEl.textContent = formatBRL(calc.custoTotal);
     });
 
     // Modal de receita
@@ -981,6 +1212,15 @@
       renderModalItems();
     });
 
+    document.getElementById('rm-items-container').addEventListener('input', (e) => {
+      const row = e.target.closest('[data-rm-idx]');
+      if (!row || !modalRecipeDraft) return;
+      const idx = Number(row.dataset.rmIdx);
+      if (e.target.classList.contains('rm-item-qty')) {
+        modalRecipeDraft.itens[idx].quantidade = Math.max(0, parseLocaleNumber(e.target.value));
+      }
+    });
+
     document.getElementById('rm-items-container').addEventListener('change', (e) => {
       const row = e.target.closest('[data-rm-idx]');
       if (!row || !modalRecipeDraft) return;
@@ -988,7 +1228,7 @@
       if (e.target.classList.contains('rm-item-ref')) {
         modalRecipeDraft.itens[idx].refId = e.target.value;
       } else if (e.target.classList.contains('rm-item-qty')) {
-        modalRecipeDraft.itens[idx].quantidade = Number(e.target.value || 0);
+        modalRecipeDraft.itens[idx].quantidade = Math.max(0, parseLocaleNumber(e.target.value));
       }
     });
 
@@ -1004,9 +1244,9 @@
       if (!modalRecipeDraft) return;
       modalRecipeDraft.nome = document.getElementById('rm-nome').value.trim() || 'Sem nome';
       modalRecipeDraft.tipo = document.getElementById('rm-tipo').value;
-      modalRecipeDraft.rendimento = Math.max(0.1, Number(document.getElementById('rm-rendimento').value || 1));
+      modalRecipeDraft.rendimento = Math.max(0.1, parseLocaleNumber(document.getElementById('rm-rendimento').value) || 1);
       modalRecipeDraft.unidadeRendimento = document.getElementById('rm-unidade').value.trim() || 'un';
-      modalRecipeDraft.custosIndiretosPct = Math.max(0, Number(document.getElementById('rm-indiretos').value || 0));
+      modalRecipeDraft.custosIndiretosPct = Math.max(0, parseLocaleNumber(document.getElementById('rm-indiretos').value));
 
       const idx = state.recipes.findIndex((r) => r.id === modalRecipeDraft.id);
       if (idx >= 0) state.recipes[idx] = modalRecipeDraft;
@@ -1029,14 +1269,15 @@
       }
     });
 
-    // Precificação & Configs
+    // Precificação & Configs (NUNCA recriar os inputs focados em input)
     ['cfg-margem-min', 'cfg-ifood-basico', 'cfg-ifood-entrega'].forEach((id) => {
       document.getElementById(id).addEventListener('input', () => {
-        state.config.margemMinima = Number(document.getElementById('cfg-margem-min').value || 0);
-        state.config.taxaIfoodBasico = Number(document.getElementById('cfg-ifood-basico').value || 0);
-        state.config.taxaIfoodEntrega = Number(document.getElementById('cfg-ifood-entrega').value || 0);
+        state.config.margemMinima = Math.max(0, Math.min(95, parseLocaleNumber(document.getElementById('cfg-margem-min').value)));
+        state.config.taxaIfoodBasico = Math.max(0, Math.min(95, parseLocaleNumber(document.getElementById('cfg-ifood-basico').value)));
+        state.config.taxaIfoodEntrega = Math.max(0, Math.min(95, parseLocaleNumber(document.getElementById('cfg-ifood-entrega').value)));
         saveState();
-        renderPrecificacao();
+        updateAllPricingCardsDOM();
+        updateComboResultDOM();
       });
     });
 
@@ -1046,55 +1287,47 @@
       const prod = state.recipes.find((r) => r.id === card.dataset.pricingId);
       if (!prod) return;
 
-      const val = Math.max(0, Number(e.target.value || 0));
+      const val = Math.max(0, parseLocaleNumber(e.target.value));
       prod.precoVendaDireta = val;
       saveState();
 
-      // Sincroniza o outro controle (slider <-> input)
+      // Sincroniza apenas o outro controle (nunca sobrescreve o próprio input focado)
       if (e.target.classList.contains('price-slider')) {
-        card.querySelector('.price-input').value = val.toFixed(2);
+        card.querySelector('.price-input').value = formatNum(val, 2);
       } else if (e.target.classList.contains('price-input')) {
-        card.querySelector('.price-slider').value = val;
+        const slider = card.querySelector('.price-slider');
+        if (slider) {
+          if (val > Number(slider.max)) slider.max = String(Math.ceil(val * 1.25));
+          slider.value = val;
+        }
       }
 
-      const calc = calculateRecipeCost(prod.id, state);
-      const p = calculateChannelPricing(calc.custoUnitario, val, state.config);
-
-      card.classList.toggle('alert-low', p.status !== 'saudavel');
-      const badge = card.querySelector('.pricing-badge');
-      badge.className = `badge pricing-badge ${p.status === 'saudavel' ? 'badge-olive' : (p.status === 'baixa' ? 'badge-amber' : 'badge-terracotta')}`;
-      badge.textContent = `${formatNum(p.margemDiretaPct, 1)}% margem`;
-
-      card.querySelector('.pricing-direto-val').textContent = formatBRL(p.precoDireto);
-      card.querySelector('.pricing-direto-lucro').innerHTML = `Lucro líquido: <strong style="color:${p.lucroDireto >= 0 ? 'var(--olive)' : 'var(--terracotta)'}">${formatBRL(p.lucroDireto)}</strong>`;
-      card.querySelector('.pricing-basico-val').textContent = formatBRL(p.ifoodBasico.preco);
-      card.querySelector('.pricing-basico-sub').textContent = `Taxa: -${formatBRL(p.ifoodBasico.taxaRS)} • Líquido: ${formatBRL(p.ifoodBasico.liquido)}`;
-      card.querySelector('.pricing-entrega-val').textContent = formatBRL(p.ifoodEntrega.preco);
-      card.querySelector('.pricing-entrega-sub').textContent = `Taxa: -${formatBRL(p.ifoodEntrega.taxaRS)} • Líquido: ${formatBRL(p.ifoodEntrega.liquido)}`;
-
-      let alertHtml = '';
-      if (p.status === 'prejuizo') {
-        alertHtml = `<div class="alert-banner terracotta"><span>⚠️ <strong>Prejuízo!</strong> O preço de ${formatBRL(p.precoDireto)} está abaixo do custo unitário (${formatBRL(p.custoUnitario)}). Recomendado mínimo: ${formatBRL(p.precoMinimoRecomendado)}.</span></div>`;
-      } else if (p.status === 'baixa') {
-        alertHtml = `<div class="alert-banner amber"><span>⚡ <strong>Margem abaixo da meta (${formatNum(state.config.margemMinima, 0)}%):</strong> Margem atual de ${formatNum(p.margemDiretaPct, 1)}%. Para atingir a meta, cobre a partir de ${formatBRL(p.precoMinimoRecomendado)}.</span></div>`;
-      }
-      card.querySelector('.pricing-alert-slot').innerHTML = alertHtml;
+      updatePricingCardDOM(card, prod);
+      updateComboResultDOM();
     });
 
-    // Combos
+    document.getElementById('pricing-cards-container').addEventListener('focusout', (e) => {
+      if (!e.target.classList.contains('price-input')) return;
+      const card = e.target.closest('.pricing-card');
+      if (!card) return;
+      const prod = state.recipes.find((r) => r.id === card.dataset.pricingId);
+      if (prod) e.target.value = formatNum(prod.precoVendaDireta, 2);
+    });
+
+    // Combos (NUNCA recriar os inputs focados em input)
     document.getElementById('combo-nome').addEventListener('input', (e) => {
       state.combo.nome = e.target.value;
       saveState();
     });
     document.getElementById('combo-desconto').addEventListener('input', (e) => {
-      state.combo.descontoPct = Number(e.target.value || 0);
+      state.combo.descontoPct = Math.max(0, Math.min(90, parseLocaleNumber(e.target.value)));
       saveState();
-      renderComboSimulator();
+      updateComboResultDOM();
     });
     document.getElementById('combo-emb-familia').addEventListener('change', (e) => {
       state.combo.incluirEmbalagemFamilia = e.target.checked;
       saveState();
-      renderComboSimulator();
+      updateComboResultDOM();
     });
     document.getElementById('btn-add-combo-item').addEventListener('click', () => {
       const firstProd = state.recipes.find((r) => r.tipo === 'produto');
@@ -1103,17 +1336,24 @@
       saveState();
       renderComboSimulator();
     });
+    document.getElementById('combo-items-list').addEventListener('input', (e) => {
+      if (!e.target.classList.contains('combo-item-qty')) return;
+      const row = e.target.closest('[data-combo-idx]');
+      if (!row) return;
+      const idx = Number(row.dataset.comboIdx);
+      state.combo.itens[idx].quantidade = Math.max(1, parseLocaleNumber(e.target.value) || 1);
+      saveState();
+      updateComboResultDOM();
+    });
     document.getElementById('combo-items-list').addEventListener('change', (e) => {
       const row = e.target.closest('[data-combo-idx]');
       if (!row) return;
       const idx = Number(row.dataset.comboIdx);
       if (e.target.classList.contains('combo-item-select')) {
         state.combo.itens[idx].recipeId = e.target.value;
-      } else if (e.target.classList.contains('combo-item-qty')) {
-        state.combo.itens[idx].quantidade = Math.max(1, Number(e.target.value || 1));
+        saveState();
+        updateComboResultDOM();
       }
-      saveState();
-      renderComboSimulator();
     });
     document.getElementById('combo-items-list').addEventListener('click', (e) => {
       if (!e.target.classList.contains('combo-item-del')) return;
@@ -1123,11 +1363,11 @@
       renderComboSimulator();
     });
 
-    // Investimento & Compras
+    // Investimento & Compras (NUNCA destruir inputs em listener de input!)
     document.getElementById('plan-periodo').addEventListener('change', (e) => {
       state.periodo = e.target.value;
       saveState();
-      renderInvestimento();
+      updateInvestimentoSummaryDOM();
     });
 
     ['mix-direto', 'mix-basico', 'mix-entrega'].forEach((id) => {
@@ -1136,7 +1376,7 @@
         state.mix.basico = Number(document.getElementById('mix-basico').value || 0);
         state.mix.entrega = Number(document.getElementById('mix-entrega').value || 0);
         saveState();
-        renderInvestimento();
+        updateInvestimentoSummaryDOM();
       });
     });
 
@@ -1145,25 +1385,107 @@
       const tr = e.target.closest('tr');
       const rec = state.recipes.find((r) => r.id === tr.dataset.planId);
       if (!rec) return;
-      rec.fornadasPlanejadas = Math.max(0, Number(e.target.value || 0));
+      const fornadas = Math.max(0, parseLocaleNumber(e.target.value));
+      rec.fornadasPlanejadas = fornadas;
       saveState();
-      renderInvestimento();
+
+      const calc = calculateRecipeCost(rec.id, state);
+      const unidades = fornadas * Number(rec.rendimento || 1);
+      const unidadesCell = tr.querySelector('.plan-unidades-cell');
+      const custoCell = tr.querySelector('.plan-custo-cell');
+      if (unidadesCell) unidadesCell.textContent = `${formatNum(unidades, 0)} un`;
+      if (custoCell) custoCell.textContent = formatBRL(calc.custoTotal * fornadas);
+
+      updateInvestimentoSummaryDOM();
     });
 
-    document.getElementById('btn-add-equip').addEventListener('click', () => {
-      state.equipments.push({ id: 'eq-' + Date.now(), nome: 'Novo Equipamento / Taxa', valor: 50.00 });
+    // Já Gasto / Investido até agora
+    document.getElementById('btn-add-already-spent').addEventListener('click', () => {
+      if (!Array.isArray(state.alreadySpent)) state.alreadySpent = [];
+      state.alreadySpent.push({ id: 'gasto-' + Date.now(), nome: 'Novo Gasto Realizado', valor: 0 });
       saveState();
-      renderInvestimento();
+      renderAlreadySpentTable();
+      updateInvestimentoSummaryDOM();
+    });
+
+    document.getElementById('already-spent-tbody').addEventListener('input', (e) => {
+      const tr = e.target.closest('tr');
+      if (!tr || !tr.dataset.spentId) return;
+      const item = (state.alreadySpent || []).find((g) => g.id === tr.dataset.spentId);
+      if (!item) return;
+      if (e.target.classList.contains('as-nome-input')) {
+        item.nome = e.target.value;
+      } else if (e.target.classList.contains('as-valor-input')) {
+        item.valor = Math.max(0, parseLocaleNumber(e.target.value));
+      } else {
+        return;
+      }
+      saveState();
+      if (e.target.classList.contains('as-valor-input')) {
+        updateInvestimentoSummaryDOM();
+      }
+    });
+
+    document.getElementById('already-spent-tbody').addEventListener('focusout', (e) => {
+      if (!e.target.classList.contains('as-valor-input')) return;
+      const tr = e.target.closest('tr');
+      const item = (state.alreadySpent || []).find((g) => g.id === tr?.dataset.spentId);
+      if (item) e.target.value = formatNum(item.valor, 2);
+    });
+
+    document.getElementById('already-spent-tbody').addEventListener('click', (e) => {
+      if (!e.target.classList.contains('as-del-btn')) return;
+      const tr = e.target.closest('tr');
+      state.alreadySpent = (state.alreadySpent || []).filter((g) => g.id !== tr.dataset.spentId);
+      saveState();
+      renderAlreadySpentTable();
+      updateInvestimentoSummaryDOM();
+    });
+
+    // Equipamentos (com Já pago)
+    document.getElementById('btn-add-equip').addEventListener('click', () => {
+      state.equipments.push({ id: 'eq-' + Date.now(), nome: 'Novo Equipamento / Taxa', valor: 50.00, jaPago: false });
+      saveState();
+      renderEquipmentsTable();
+      updateInvestimentoSummaryDOM();
     });
 
     document.getElementById('equipments-tbody').addEventListener('input', (e) => {
       const tr = e.target.closest('tr');
+      if (!tr || !tr.dataset.equipId) return;
       const eq = state.equipments.find((item) => item.id === tr.dataset.equipId);
       if (!eq) return;
-      if (e.target.classList.contains('eq-nome-input')) eq.nome = e.target.value;
-      else if (e.target.classList.contains('eq-valor-input')) eq.valor = Math.max(0, Number(e.target.value || 0));
+      if (e.target.classList.contains('eq-nome-input')) {
+        eq.nome = e.target.value;
+      } else if (e.target.classList.contains('eq-valor-input')) {
+        eq.valor = Math.max(0, parseLocaleNumber(e.target.value));
+      } else {
+        return;
+      }
       saveState();
-      if (e.target.classList.contains('eq-valor-input')) renderInvestimento();
+      if (e.target.classList.contains('eq-valor-input')) {
+        updateInvestimentoSummaryDOM();
+      }
+    });
+
+    document.getElementById('equipments-tbody').addEventListener('focusout', (e) => {
+      if (!e.target.classList.contains('eq-valor-input')) return;
+      const tr = e.target.closest('tr');
+      const eq = state.equipments.find((item) => item.id === tr?.dataset.equipId);
+      if (eq) e.target.value = formatNum(eq.valor, 2);
+    });
+
+    document.getElementById('equipments-tbody').addEventListener('change', (e) => {
+      if (!e.target.classList.contains('eq-pago-checkbox')) return;
+      const tr = e.target.closest('tr');
+      const eq = state.equipments.find((item) => item.id === tr?.dataset.equipId);
+      if (!eq) return;
+      eq.jaPago = Boolean(e.target.checked);
+      tr.classList.toggle('eq-row-paid', eq.jaPago);
+      const lbl = tr.querySelector('.eq-paid-lbl');
+      if (lbl) lbl.textContent = eq.jaPago ? 'Pago' : 'Falta';
+      saveState();
+      updateInvestimentoSummaryDOM();
     });
 
     document.getElementById('equipments-tbody').addEventListener('click', (e) => {
@@ -1171,20 +1493,23 @@
       const tr = e.target.closest('tr');
       state.equipments = state.equipments.filter((item) => item.id !== tr.dataset.equipId);
       saveState();
-      renderInvestimento();
+      renderEquipmentsTable();
+      updateInvestimentoSummaryDOM();
     });
 
     document.getElementById('btn-copy-shopping').addEventListener('click', () => {
-      const proj = calculateShoppingListAndProjection(state, getNormalizedMix());
+      const proj = getInvestmentProjection(getNormalizedMix());
       if (!proj.shoppingList.length) {
         showToast('Nenhum item na lista de compras.');
         return;
       }
       const lines = [
         `🛒 LISTA DE COMPRAS — ANA'S BAKERY (${state.periodo})`,
-        `Capital de Giro Estimado: ${formatBRL(proj.investimentoCompraFechada)}`,
+        `Insumos a Comprar: ${formatBRL(proj.investimentoCompraFechada)}`,
+        `Equipamentos Pendentes: ${formatBRL(proj.totalEquipamentosAComprar)}`,
+        `Total a Comprar Geral: ${formatBRL(proj.totalAComprarGeral)}`,
         '----------------------------------------',
-        ...proj.shoppingList.map((i) => `• ${i.ingredient.nome}: ${i.packs}x emb. (${i.ingredient.quantidade} ${i.ingredient.unidade}) — ${formatBRL(i.custoCompra)}`),
+        ...proj.shoppingList.map((i) => `• ${i.ingredient.nome}: ${formatNum(i.packs, 0)}x emb. (${formatInputNumber(i.ingredient.quantidade)} ${i.ingredient.unidade}) — ${formatBRL(i.custoCompra)}`),
       ];
       navigator.clipboard?.writeText(lines.join('\n')).then(() => {
         showToast('Lista de compras copiada!');
@@ -1226,9 +1551,9 @@
       const field = e.target.dataset.orderField;
       if (field) {
         if (field === 'custoExtra' || field === 'sinalPago') {
-          order[field] = Math.max(0, Number(e.target.value || 0));
+          order[field] = Math.max(0, parseLocaleNumber(e.target.value));
         } else if (field === 'precoCobrado') {
-          order.precoCobrado = e.target.value === '' ? null : Math.max(0, Number(e.target.value));
+          order.precoCobrado = e.target.value.trim() === '' ? null : Math.max(0, parseLocaleNumber(e.target.value));
         } else {
           order[field] = e.target.value;
         }
@@ -1241,10 +1566,23 @@
       if (e.target.classList.contains('pedido-item-qty')) {
         const row = e.target.closest('[data-item-idx]');
         const idx = Number(row.dataset.itemIdx);
-        order.itens[idx].quantidade = Math.max(1, Number(e.target.value || 1));
+        order.itens[idx].quantidade = Math.max(1, parseLocaleNumber(e.target.value) || 1);
         saveState();
         updatePedidoFinancialSummary(card, order);
         renderPedidosKPIs();
+      }
+    });
+
+    pedidosContainer.addEventListener('focusout', (e) => {
+      const card = e.target.closest('.pedido-card');
+      if (!card) return;
+      const order = state.internalOrders.find((o) => o.id === card.dataset.orderId);
+      if (!order) return;
+      const field = e.target.dataset.orderField;
+      if (field === 'custoExtra' || field === 'sinalPago') {
+        e.target.value = formatNum(order[field] || 0, 2);
+      } else if (field === 'precoCobrado' && order.precoCobrado !== null && order.precoCobrado !== '') {
+        e.target.value = formatNum(order.precoCobrado, 2);
       }
     });
 
@@ -1292,7 +1630,7 @@
         showToast(`Preço sugerido de ${formatBRL(calc.precoSugeridoSaudavel)} aplicado!`);
       } else if (e.target.classList.contains('pedido-copy-quote')) {
         const calc = calculateInternalOrder(order, state);
-        const itensTxt = calc.itensDetalhados.map((it) => `• ${it.quantidade}x ${it.recipe.nome}`).join('\n');
+        const itensTxt = calc.itensDetalhados.map((it) => `• ${formatNum(it.quantidade, 0)}x ${it.recipe.nome}`).join('\n');
         const msg = [
           `Olá! Segue o orçamento da *Ana's Bakery* 🍫✨`,
           ``,
@@ -1344,7 +1682,7 @@
     document.getElementById('pedidos-kpis').innerHTML = `
       <div class="kpi-card">
         <span class="kpi-label">Pedidos Ativos</span>
-        <span class="kpi-value gold">${ativos.length}</span>
+        <span class="kpi-value gold">${formatNum(ativos.length, 0)}</span>
         <span class="kpi-sub">Encomendas presenciais sem taxa iFood</span>
       </div>
       <div class="kpi-card">
@@ -1379,6 +1717,18 @@
     const calc = calculateInternalOrder(order, state);
     const badgeClass = calc.statusMargem === 'saudavel' ? 'badge-olive' : (calc.statusMargem === 'baixa' ? 'badge-amber' : 'badge-terracotta');
     card.classList.toggle('alert-low', calc.statusMargem !== 'saudavel');
+
+    card.querySelectorAll('[data-item-idx]').forEach((row) => {
+      const idx = Number(row.dataset.itemIdx);
+      const item = (order.itens || [])[idx];
+      const subEl = row.querySelector('.ped-item-subtotal');
+      if (!subEl || !item) return;
+      const det = calc.itensDetalhados.find((d) => d.recipe.id === item.recipeId);
+      subEl.textContent = det ? formatBRL(det.custoSubtotal) : formatBRL(0);
+    });
+
+    const precoInput = card.querySelector('[data-order-field="precoCobrado"]');
+    if (precoInput) precoInput.placeholder = formatNum(calc.precoSugeridoSaudavel, 2);
 
     card.querySelector('.ped-custo-val').textContent = formatBRL(calc.custoTotal);
     card.querySelector('.ped-minimo-val').textContent = formatBRL(calc.precoMinimoMeta);
@@ -1415,9 +1765,9 @@
             <select class="select pedido-item-select" style="flex:1;">
               ${produtos.map((p) => `<option value="${escapeHtml(p.id)}" ${p.id === item.recipeId ? 'selected' : ''}>${escapeHtml(p.nome)}</option>`).join('')}
             </select>
-            <input type="number" min="1" step="1" class="input input-num pedido-item-qty" value="${item.quantidade}" style="width:72px;" />
-            <span class="tabular" style="font-size:0.82rem; color:var(--text-muted); min-width:74px; text-align:right;">
-              ${det ? formatBRL(det.custoSubtotal) : 'R$ 0,00'}
+            <input type="text" inputmode="numeric" class="input input-num pedido-item-qty" value="${formatInputNumber(item.quantidade)}" style="width:72px;" />
+            <span class="tabular ped-item-subtotal" style="font-size:0.82rem; color:var(--text-muted); min-width:74px; text-align:right;">
+              ${det ? formatBRL(det.custoSubtotal) : formatBRL(0)}
             </span>
             <button class="btn btn-danger-ghost btn-sm pedido-del-item" type="button">✕</button>
           </div>
@@ -1508,15 +1858,15 @@
               <div class="grid-3">
                 <div class="field-group">
                   <label>Preço Cobrado (R$)</label>
-                  <input type="number" min="0" step="0.5" class="input input-num" data-order-field="precoCobrado" value="${calc.temPrecoCustom ? Number(order.precoCobrado).toFixed(2) : ''}" placeholder="${calc.precoSugeridoSaudavel.toFixed(2)}" />
+                  <input type="text" inputmode="decimal" class="input input-num" data-order-field="precoCobrado" value="${calc.temPrecoCustom ? formatNum(Number(order.precoCobrado), 2) : ''}" placeholder="${formatNum(calc.precoSugeridoSaudavel, 2)}" />
                 </div>
                 <div class="field-group">
                   <label>Custo Extra / Entrega (R$)</label>
-                  <input type="number" min="0" step="0.5" class="input input-num" data-order-field="custoExtra" value="${order.custoExtra || 0}" />
+                  <input type="text" inputmode="decimal" class="input input-num" data-order-field="custoExtra" value="${formatNum(order.custoExtra || 0, 2)}" />
                 </div>
                 <div class="field-group">
                   <label>Sinal Pago (R$)</label>
-                  <input type="number" min="0" step="0.5" class="input input-num" data-order-field="sinalPago" value="${order.sinalPago || 0}" />
+                  <input type="text" inputmode="decimal" class="input input-num" data-order-field="sinalPago" value="${formatNum(order.sinalPago || 0, 2)}" />
                 </div>
               </div>
 

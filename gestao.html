@@ -11,6 +11,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('anas_bakery_theme');
+        var dark = saved ? saved === 'dark' : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+      } catch (e) {}
+    })();
+  </script>
   <link rel="stylesheet" href="gestao.css" />
 </head>
 <body>
@@ -97,6 +106,7 @@
         </div>
         <div class="topbar-actions">
           <span class="badge badge-gold" id="badge-storage-status">Sincronizando nuvem...</span>
+          <button class="btn btn-secondary btn-sm" id="btn-theme-toggle" type="button" title="Alternar modo claro/escuro" aria-pressed="false">🌙 Escuro</button>
           <button class="btn btn-secondary btn-sm" id="btn-sync-cloud" type="button" title="Buscar últimas alterações salvas na nuvem">↻ Atualizar</button>
           <button class="btn btn-primary btn-sm" id="btn-quick-new-recipe" type="button">+ Nova Receita</button>
         </div>
@@ -210,15 +220,15 @@
           <div class="config-strip">
             <div class="field-group">
               <label for="cfg-margem-min">Margem Líquida Mínima (%)</label>
-              <input id="cfg-margem-min" type="number" step="0.5" min="0" max="95" class="input input-num" style="width:130px;" />
+              <input id="cfg-margem-min" type="text" inputmode="decimal" class="input input-num" style="width:130px;" />
             </div>
             <div class="field-group">
               <label for="cfg-ifood-basico">Taxa iFood Plano Básico (%)</label>
-              <input id="cfg-ifood-basico" type="number" step="0.1" min="0" max="60" class="input input-num" style="width:130px;" />
+              <input id="cfg-ifood-basico" type="text" inputmode="decimal" class="input input-num" style="width:130px;" />
             </div>
             <div class="field-group">
               <label for="cfg-ifood-entrega">Taxa iFood Plano Entrega (%)</label>
-              <input id="cfg-ifood-entrega" type="number" step="0.1" min="0" max="60" class="input input-num" style="width:130px;" />
+              <input id="cfg-ifood-entrega" type="text" inputmode="decimal" class="input input-num" style="width:130px;" />
             </div>
             <div style="margin-left:auto; font-size:0.82rem; color:var(--text-muted); max-width:340px;">
               Os preços sugeridos no iFood garantem que você receba <strong>exatamente o mesmo valor líquido</strong> da venda direta.
@@ -254,7 +264,7 @@
 
                   <div class="field-group" style="flex-direction:row; align-items:center; gap:8px;">
                     <label for="combo-desconto" style="margin:0;">Desconto Promocional (%):</label>
-                    <input id="combo-desconto" type="number" min="0" max="60" step="1" class="input input-num" style="width:76px;" />
+                    <input id="combo-desconto" type="text" inputmode="decimal" class="input input-num" style="width:76px;" />
                   </div>
                 </div>
               </div>
@@ -269,53 +279,30 @@
           <div class="kpi-grid" id="invest-kpis"></div>
 
           <div class="grid-2" style="margin-bottom:20px;">
-            <!-- Planejador de Fornadas -->
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2 class="card-title">1. Planejador de Produção (Fornadas)</h2>
-                  <p class="card-desc">Defina quantas receitas/fornadas de cada doce você pretende produzir no período.</p>
-                </div>
-                <select id="plan-periodo" class="select" style="width:auto;">
-                  <option value="Semanal">Planejamento Semanal</option>
-                  <option value="Mensal">Planejamento Mensal</option>
-                </select>
-              </div>
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Produto Final</th>
-                      <th class="td-right">Fornadas</th>
-                      <th class="td-right">Unidades</th>
-                      <th class="td-right">Custo Lote</th>
-                    </tr>
-                  </thead>
-                  <tbody id="production-plan-tbody"></tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Equipamentos e Mix -->
+            <!-- Planejador de Fornadas & Mix -->
             <div style="display:flex; flex-direction:column; gap:20px;">
               <div class="card">
                 <div class="card-header">
                   <div>
-                    <h2 class="card-title">2. Equipamentos &amp; Custos Fixos Iniciais</h2>
-                    <p class="card-desc">Formas, batedeira, balança, adesivos e taxas para calcular o Ponto de Equilíbrio.</p>
+                    <h2 class="card-title">1. Planejador de Produção (Fornadas)</h2>
+                    <p class="card-desc">Defina quantas receitas/fornadas de cada doce você pretende produzir no período.</p>
                   </div>
-                  <button id="btn-add-equip" class="btn btn-secondary btn-sm" type="button">+ Item</button>
+                  <select id="plan-periodo" class="select" style="width:auto;">
+                    <option value="Semanal">Planejamento Semanal</option>
+                    <option value="Mensal">Planejamento Mensal</option>
+                  </select>
                 </div>
                 <div class="table-wrap">
                   <table>
                     <thead>
                       <tr>
-                        <th>Equipamento / Custo Fixo</th>
-                        <th class="td-right">Valor (R$)</th>
-                        <th class="td-right"></th>
+                        <th>Produto Final</th>
+                        <th class="td-right">Fornadas</th>
+                        <th class="td-right">Unidades</th>
+                        <th class="td-right">Custo Lote</th>
                       </tr>
                     </thead>
-                    <tbody id="equipments-tbody"></tbody>
+                    <tbody id="production-plan-tbody"></tbody>
                   </table>
                 </div>
               </div>
@@ -323,7 +310,7 @@
               <div class="card">
                 <div class="card-header">
                   <div>
-                    <h2 class="card-title">3. Mix de Canais de Venda</h2>
+                    <h2 class="card-title">4. Mix de Canais de Venda</h2>
                     <p class="card-desc">Simule a divisão das suas vendas entre Direto e iFood.</p>
                   </div>
                 </div>
@@ -355,6 +342,62 @@
                 </div>
               </div>
             </div>
+
+            <!-- Já Gasto vs Equipamentos a Comprar -->
+            <div style="display:flex; flex-direction:column; gap:20px;">
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h2 class="card-title">2. Já Gasto / Investido até agora</h2>
+                    <p class="card-desc">Despesas já realizadas (testes de receitas, domínio, registros) que entram no retorno total.</p>
+                  </div>
+                  <button id="btn-add-already-spent" class="btn btn-secondary btn-sm" type="button">+ Gasto</button>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Descrição do Gasto</th>
+                        <th class="td-right">Valor (R$)</th>
+                        <th class="td-right"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="already-spent-tbody"></tbody>
+                  </table>
+                </div>
+                <div class="invest-summary-strip">
+                  <span style="color:var(--text-muted); font-weight:600;">Subtotal Já Gasto (itens):</span>
+                  <strong id="already-spent-subtotal" class="tabular" style="color:var(--olive);">R$ 0,00</strong>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h2 class="card-title">3. Equipamentos &amp; Custos Fixos</h2>
+                    <p class="card-desc">Marque <strong>Já pago</strong> para separar o que já foi comprado do que ainda falta comprar.</p>
+                  </div>
+                  <button id="btn-add-equip" class="btn btn-secondary btn-sm" type="button">+ Item</button>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style="width:88px;">Já pago</th>
+                        <th>Equipamento / Custo Fixo</th>
+                        <th class="td-right">Valor (R$)</th>
+                        <th class="td-right"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="equipments-tbody"></tbody>
+                  </table>
+                </div>
+                <div class="invest-summary-strip">
+                  <span>Pagos: <strong id="equip-paid-subtotal" class="tabular" style="color:var(--olive);">R$ 0,00</strong></span>
+                  <span>Falta comprar: <strong id="equip-pending-subtotal" class="tabular" style="color:var(--gold-dark);">R$ 0,00</strong></span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Ponto de Equilíbrio & Gráfico Financeiro -->
@@ -363,7 +406,7 @@
               <div class="card-header">
                 <div>
                   <h2 class="card-title">Ponto de Equilíbrio (Break-even)</h2>
-                  <p class="card-desc">Quantas unidades você precisa vender para pagar todo o investimento inicial (Equipamentos + Capital de Giro em Insumos).</p>
+                  <p class="card-desc">Comparativo entre o que já foi investido, o que falta comprar (equipamentos + insumos) e o retorno total.</p>
                 </div>
               </div>
               <div id="breakeven-container"></div>
@@ -485,7 +528,7 @@
         <div class="grid-3">
           <div class="field-group">
             <label for="rm-rendimento">Rendimento Real</label>
-            <input id="rm-rendimento" type="number" step="0.1" min="0.1" class="input input-num" />
+            <input id="rm-rendimento" type="text" inputmode="decimal" class="input input-num" />
           </div>
           <div class="field-group">
             <label for="rm-unidade">Unidade do Rendimento</label>
@@ -493,7 +536,7 @@
           </div>
           <div class="field-group">
             <label for="rm-indiretos">Custos Indiretos (%)</label>
-            <input id="rm-indiretos" type="number" step="1" min="0" max="100" class="input input-num" />
+            <input id="rm-indiretos" type="text" inputmode="decimal" class="input input-num" />
           </div>
         </div>
 
