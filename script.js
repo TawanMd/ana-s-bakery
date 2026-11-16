@@ -15,11 +15,14 @@ const IFOOD_CONFIG = {
   whatsappNumbers: ['5548988015140', '5548991444114']
 };
 
+const THEME_STORAGE_KEY = 'anas_bakery_theme';
+
 document.addEventListener('DOMContentLoaded', () => {
   const introOverlay = document.getElementById('intro-overlay');
   const introStage = document.getElementById('intro-stage');
   const navLogoTarget = document.getElementById('nav-logo-target');
   const btnReplayIntro = document.getElementById('btn-replay-intro');
+  const btnThemeToggle = document.getElementById('btn-theme-toggle');
   const parallaxLayers = document.querySelectorAll('.parallax-layer');
   const scrollCrumbsLayer = document.getElementById('scroll-crumbs-layer');
   const toastEl = document.getElementById('toast-notification');
@@ -30,6 +33,73 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let cartCount = 2;
   let toastTimer = null;
+
+  /* ------------------------------------------------------------------------
+     0.A. GERENCIAMENTO DO MODO ESCURO (DARK MODE)
+     ------------------------------------------------------------------------ */
+  const darkMediaQuery = window.matchMedia
+    ? window.matchMedia('(prefers-color-scheme: dark)')
+    : null;
+
+  function getSavedTheme() {
+    try {
+      const saved = localStorage.getItem(THEME_STORAGE_KEY);
+      return saved === 'dark' || saved === 'light' ? saved : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function applyTheme(theme, persist = false) {
+    const isDark = theme === 'dark';
+    if (isDark) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+
+    if (btnThemeToggle) {
+      btnThemeToggle.setAttribute('aria-pressed', String(isDark));
+      btnThemeToggle.setAttribute(
+        'aria-label',
+        isDark ? 'Alternar para modo claro' : 'Alternar para modo escuro'
+      );
+      btnThemeToggle.setAttribute(
+        'title',
+        isDark ? 'Mudar para modo claro' : 'Mudar para modo escuro'
+      );
+    }
+
+    if (persist) {
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, isDark ? 'dark' : 'light');
+      } catch (e) {}
+    }
+  }
+
+  const initialTheme = getSavedTheme() || (darkMediaQuery && darkMediaQuery.matches ? 'dark' : 'light');
+  applyTheme(initialTheme, false);
+
+  if (btnThemeToggle) {
+    btnThemeToggle.addEventListener('click', () => {
+      const nextIsDark = document.documentElement.getAttribute('data-theme') !== 'dark';
+      applyTheme(nextIsDark ? 'dark' : 'light', true);
+      showToast(nextIsDark ? '🌙 Modo escuro ativado!' : '☀️ Modo claro ativado!');
+    });
+  }
+
+  if (darkMediaQuery) {
+    const handleSystemThemeChange = (e) => {
+      if (!getSavedTheme()) {
+        applyTheme(e.matches ? 'dark' : 'light', false);
+      }
+    };
+    if (typeof darkMediaQuery.addEventListener === 'function') {
+      darkMediaQuery.addEventListener('change', handleSystemThemeChange);
+    } else if (typeof darkMediaQuery.addListener === 'function') {
+      darkMediaQuery.addListener(handleSystemThemeChange);
+    }
+  }
 
   /* ------------------------------------------------------------------------
      0. INICIALIZAÇÃO DO REDIRECT DO IFOOD
@@ -150,26 +220,25 @@ document.addEventListener('DOMContentLoaded', () => {
      3. PROGRESSÃO DE SCROLL — MIGALHAS E RESPINGOS FLUTUANDO PARA CIMA
      ------------------------------------------------------------------------ */
   const crumbSpecs = [
-    { left: '6%', top: '78%', size: 12, color: '#3C1F15', speed: 0.28, shape: 'circle' },
-    { left: '14%', top: '88%', size: 9, color: '#E5A93B', speed: 0.42, shape: 'circle' },
-    { left: '24%', top: '72%', size: 14, color: '#C58C3E', speed: 0.35, shape: 'drop' },
-    { left: '46%', top: '84%', size: 10, color: '#3C1F15', speed: 0.50, shape: 'circle' },
-    { left: '62%', top: '90%', size: 13, color: '#E5A93B', speed: 0.38, shape: 'drop' },
-    { left: '78%', top: '82%', size: 11, color: '#3C1F15', speed: 0.46, shape: 'circle' },
-    { left: '89%', top: '76%', size: 15, color: '#C58C3E', speed: 0.31, shape: 'drop' },
-    { left: '94%', top: '92%', size: 8, color: '#3C1F15', speed: 0.54, shape: 'circle' }
+    { left: '6%', top: '78%', size: 12, tone: 'dark', speed: 0.28, shape: 'circle' },
+    { left: '14%', top: '88%', size: 9, tone: 'caramel', speed: 0.42, shape: 'circle' },
+    { left: '24%', top: '72%', size: 14, tone: 'gold', speed: 0.35, shape: 'drop' },
+    { left: '46%', top: '84%', size: 10, tone: 'dark', speed: 0.50, shape: 'circle' },
+    { left: '62%', top: '90%', size: 13, tone: 'caramel', speed: 0.38, shape: 'drop' },
+    { left: '78%', top: '82%', size: 11, tone: 'dark', speed: 0.46, shape: 'circle' },
+    { left: '89%', top: '76%', size: 15, tone: 'gold', speed: 0.31, shape: 'drop' },
+    { left: '94%', top: '92%', size: 8, tone: 'dark', speed: 0.54, shape: 'circle' }
   ];
 
   const crumbNodes = [];
   if (scrollCrumbsLayer) {
     crumbSpecs.forEach((spec, idx) => {
       const el = document.createElement('div');
-      el.className = 'scroll-crumb';
+      el.className = `scroll-crumb scroll-crumb--${spec.tone}`;
       el.style.left = spec.left;
       el.style.top = spec.top;
       el.style.width = `${spec.size}px`;
       el.style.height = `${spec.size}px`;
-      el.style.backgroundColor = spec.color;
       el.style.borderRadius = spec.shape === 'drop' ? '60% 40% 70% 30%' : '50%';
       el.style.transform = `rotate(${idx * 35}deg)`;
       scrollCrumbsLayer.appendChild(el);
