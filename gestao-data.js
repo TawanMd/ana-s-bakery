@@ -217,12 +217,17 @@ const DEFAULT_RECIPES = [
 ];
 
 const DEFAULT_EQUIPMENTS = [
-  { id: 'eq-1', nome: 'Batedeira Planetária / Mixer', valor: 480.00 },
-  { id: 'eq-2', nome: 'Balança Digital de Precisão (1 g)', valor: 45.00 },
-  { id: 'eq-3', nome: 'Formas (Pão de Mel, Brownie, Assadeiras)', valor: 180.00 },
-  { id: 'eq-4', nome: 'Espátulas de silicone, Bowls e Termômetro', valor: 120.00 },
-  { id: 'eq-5', nome: 'Adesivos personalizados & Carimbo', valor: 95.00 },
-  { id: 'eq-6', nome: 'Reserva MEI / Taxas iniciais', valor: 75.00 },
+  { id: 'eq-1', nome: 'Batedeira Planetária / Mixer', valor: 480.00, jaPago: false },
+  { id: 'eq-2', nome: 'Balança Digital de Precisão (1 g)', valor: 45.00, jaPago: false },
+  { id: 'eq-3', nome: 'Formas (Pão de Mel, Brownie, Assadeiras)', valor: 180.00, jaPago: false },
+  { id: 'eq-4', nome: 'Espátulas de silicone, Bowls e Termômetro', valor: 120.00, jaPago: false },
+  { id: 'eq-5', nome: 'Adesivos personalizados & Carimbo', valor: 95.00, jaPago: false },
+  { id: 'eq-6', nome: 'Reserva MEI / Taxas iniciais', valor: 75.00, jaPago: false },
+];
+
+const DEFAULT_ALREADY_SPENT = [
+  { id: 'gasto-testes', nome: 'Ingredientes e testes para validar receitas', valor: 350.00 },
+  { id: 'gasto-dominio', nome: 'Registro do domínio do site (anasbakery.com.br)', valor: 40.00 },
 ];
 
 const DEFAULT_COMBO = {
@@ -238,22 +243,24 @@ const DEFAULT_COMBO = {
 
 // ======================== FUNÇÕES DE FORMATAÇÃO ========================
 
-function formatBRL(value, decimals = 2) {
-  const num = Number.isFinite(value) ? value : 0;
-  return num.toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
-}
-
 function formatNum(value, decimals = 2) {
   const num = Number.isFinite(value) ? value : 0;
-  return num.toLocaleString('pt-BR', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
+  const dec = Math.max(0, Math.min(20, Math.trunc(Number.isFinite(decimals) ? decimals : 2)));
+  const fixed = Math.abs(num).toFixed(dec);
+  const isNeg = num < 0 && Number(fixed) !== 0;
+  const [intPart, decPart] = fixed.split('.');
+  const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const formatted = dec > 0 ? `${intFormatted},${decPart}` : intFormatted;
+  return isNeg ? `-${formatted}` : formatted;
+}
+
+function formatBRL(value, decimals = 2) {
+  const num = Number.isFinite(value) ? value : 0;
+  const dec = Math.max(0, Math.min(20, Math.trunc(Number.isFinite(decimals) ? decimals : 2)));
+  const fixed = Math.abs(num).toFixed(dec);
+  const isNeg = num < 0 && Number(fixed) !== 0;
+  const formatted = formatNum(Math.abs(num), dec);
+  return `${isNeg ? '-' : ''}R$ ${formatted}`;
 }
 
 // ======================== MOTOR DE CÁLCULO ========================
@@ -497,9 +504,10 @@ function calculateShoppingListAndProjection(state, mix) {
   shoppingList.sort((a, b) => b.custoCompra - a.custoCompra);
 
   // Projeção com Mix de Canais (pctDireto, pctBasico, pctEntrega)
-  const pctD = (mix.direto || 0) / 100;
-  const pctB = (mix.basico || 0) / 100;
-  const pctE = (mix.entrega || 0) / 100;
+  const safeMix = mix || {};
+  const pctD = (safeMix.direto || 0) / 100;
+  const pctB = (safeMix.basico || 0) / 100;
+  const pctE = (safeMix.entrega || 0) / 100;
 
   let receitaBrutaMix = 0;
   let taxasAppMix = 0;
@@ -522,9 +530,22 @@ function calculateShoppingListAndProjection(state, mix) {
 
   const lucroLiquidoMix = receitaBrutaMix - taxasAppMix - custoProducaoTotal;
 
-  // Equipamentos e Break-even
-  const totalEquipamentos = state.equipments.reduce((acc, eq) => acc + Number(eq.valor || 0), 0);
-  const investimentoTotalInicial = totalEquipamentos + investimentoCompraFechada;
+  // Já Investido vs O que Temos que Comprar e Break-even
+  const alreadySpent = Array.isArray(state.alreadySpent) ? state.alreadySpent : [];
+  const equipments = Array.isArray(state.equipments) ? state.equipments : [];
+
+  const totalJaGastoItens = alreadySpent.reduce((acc, item) => acc + Number((item && item.valor) || 0), 0);
+  const totalEquipamentosPagos = equipments
+    .filter((eq) => eq && eq.jaPago === true)
+    .reduce((acc, eq) => acc + Number(eq.valor || 0), 0);
+  const totalEquipamentosAComprar = equipments
+    .filter((eq) => eq && !eq.jaPago)
+    .reduce((acc, eq) => acc + Number(eq.valor || 0), 0);
+
+  const totalJaInvestido = totalJaGastoItens + totalEquipamentosPagos;
+  const totalAComprarGeral = totalEquipamentosAComprar + investimentoCompraFechada;
+  const totalEquipamentos = totalEquipamentosPagos + totalEquipamentosAComprar;
+  const investimentoTotalInicial = totalJaInvestido + totalAComprarGeral;
 
   // Margem de contribuição média ponderada por unidade vendida no mix atual
   const lucroMedioPorUnidade = totalUnidadesProduzidas > 0 ? lucroLiquidoMix / totalUnidadesProduzidas : 0;
@@ -539,6 +560,11 @@ function calculateShoppingListAndProjection(state, mix) {
     receitaBrutaMix,
     taxasAppMix,
     lucroLiquidoMix,
+    totalJaGastoItens,
+    totalEquipamentosPagos,
+    totalEquipamentosAComprar,
+    totalJaInvestido,
+    totalAComprarGeral,
     totalEquipamentos,
     investimentoTotalInicial,
     lucroMedioPorUnidade,
