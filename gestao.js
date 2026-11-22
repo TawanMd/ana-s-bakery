@@ -24,7 +24,7 @@
       .replace(/'/g, '&#39;');
   }
 
-  function parseLocaleNumber(val) {
+  function parseSingleLocaleNumber(val) {
     if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
     let s = String(val ?? '').trim().replace(/R\$/gi, '').replace(/\s+/g, '');
     if (!s) return 0;
@@ -43,10 +43,37 @@
     return Number.isFinite(n) ? n : 0;
   }
 
+  function parseLocaleNumber(val) {
+    if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+    const raw = String(val ?? '').trim();
+    if (!raw) return 0;
+    if (raw.includes('/')) {
+      const parts = raw.split('/');
+      if (parts.length === 2) {
+        const num = parseSingleLocaleNumber(parts[0]);
+        const den = parseSingleLocaleNumber(parts[1]);
+        if (den > 0) {
+          const res = num / den;
+          return Number.isFinite(res) ? res : 0;
+        }
+        return 0;
+      }
+    }
+    return parseSingleLocaleNumber(raw);
+  }
+
   function formatInputNumber(val) {
     const num = Number(val);
     if (!Number.isFinite(num)) return '0';
     return String(num).replace('.', ',');
+  }
+
+  function formatQty(val) {
+    const num = Number(val || 0);
+    if (!Number.isFinite(num)) return '0';
+    if (Math.abs(num - Math.round(num)) < 1e-6) return formatNum(Math.round(num), 0);
+    if (Math.abs(num * 10 - Math.round(num * 10)) < 1e-4) return formatNum(num, 1);
+    return formatNum(num, 2);
   }
 
   function getDefaultAlreadySpent() {
@@ -70,12 +97,30 @@
     }));
   }
 
+  function normalizeRecipes(list) {
+    const defMap = new Map(DEFAULT_RECIPES.map((r) => [r.id, r]));
+    const normalized = list.map((rec) => {
+      const def = defMap.get(rec.id);
+      const passos = Array.isArray(rec.passos) && rec.passos.length
+        ? rec.passos
+        : (def && Array.isArray(def.passos) ? clone(def.passos) : []);
+      return { ...rec, passos };
+    });
+    const requiredId = 'prod-pao-mel-casquinha-sem-recheio';
+    if (!normalized.some((r) => r.id === requiredId) && defMap.has(requiredId)) {
+      const idx = normalized.findIndex((r) => r.id === 'prod-pao-mel-ind');
+      if (idx >= 0) normalized.splice(idx + 1, 0, clone(defMap.get(requiredId)));
+      else normalized.push(clone(defMap.get(requiredId)));
+    }
+    return normalized;
+  }
+
   function normalizeState(parsed) {
     if (parsed && Array.isArray(parsed.ingredients) && Array.isArray(parsed.recipes)) {
       return {
         config: { ...clone(DEFAULT_CONFIG), ...(parsed.config || {}) },
         ingredients: parsed.ingredients,
-        recipes: parsed.recipes,
+        recipes: normalizeRecipes(parsed.recipes),
         equipments: normalizeEquipments(
           Array.isArray(parsed.equipments) ? parsed.equipments : clone(DEFAULT_EQUIPMENTS)
         ),
@@ -160,6 +205,8 @@
   let state = loadState();
   let activeTab = 'dashboard';
   let recipeFilter = 'todos';
+  let recipeSearchQuery = '';
+  const recipeScaleMap = new Map();
   let cloudSyncTimer = null;
   let lastCloudUpdatedAt = null;
   let isPushingCloud = false;
@@ -503,72 +550,319 @@
   }
 
   // ======================== TAB 3: RECEITAS ========================
-  function renderReceitas() {
-    const grid = document.getElementById('recipes-grid');
-    const filtered = state.recipes.filter((r) => recipeFilter === 'todos' || r.tipo === recipeFilter);
+  function getRecipeScalerPresets(rec) {
+    if (rec.tipo === 'produto' && Number(rec.rendimento) === 1) {
+      return [
+        { scale: 1, label: '1 un' },
+        { scale: 4, label: '4 un' },
+        { scale: 8, label: '8 un' },
+        { scale: 16, label: '16 un' },
+      ];
+    }
+    return [
+      { scale: 0.5, label: '½x' },
+      { scale: 1, label: `1x (${formatQty(rec.rendimento)})` },
+      { scale: 2, label: '2x' },
+      { scale: 3, label: '3x' },
+    ];
+  }
 
-    grid.innerHTML = filtered.map((rec) => {
-      const calc = calculateRecipeCost(rec.id, state);
-      const isSub = rec.tipo === 'subreceita';
-      const itemsHtml = calc.breakdown.map((b) => `
+  function buildRecipeFinStripHtml(rec, calc) {
+    const isSub = rec.tipo === 'subreceita';
+    const unitLower = String(rec.unidadeRendimento || '').trim().toLowerCase();
+    const isWeightOrVolSub = isSub && (unitLower === 'g' || unitLower === 'ml');
+
+    if (!isSub) {
+      const p = calculateChannelPricing(calc.custoUnitario, Number(rec.precoVendaDireta || 0), state.config);
+      const statusClass = p.status === 'saudavel' ? 'olive' : (p.status === 'baixa' ? 'amber' : 'terracotta');
+      return `
+        <div class="recipe-fin-item">
+          <span class="recipe-fin-lbl">Custo Unitário</span>
+          <span class="recipe-fin-val gold">${formatBRL(calc.custoUnitario)}</span>
+          <span class="recipe-fin-sub">Indiretos: ${formatNum(rec.custosIndiretosPct, 0)}%</span>
+        </div>
+        <div class="recipe-fin-item">
+          <span class="recipe-fin-lbl">Preço Direto</span>
+          <span class="recipe-fin-val">${formatBRL(p.precoDireto)}</span>
+          <span class="recipe-fin-sub">Mín. meta: ${formatBRL(p.precoMinimoRecomendado)}</span>
+        </div>
+        <div class="recipe-fin-item">
+          <span class="recipe-fin-lbl">Lucro / Margem</span>
+          <span class="recipe-fin-val ${statusClass}">${formatBRL(p.lucroDireto)}</span>
+          <span class="recipe-fin-sub">${formatNum(p.margemDiretaPct, 1)}% margem</span>
+        </div>
+      `;
+    }
+
+    if (isWeightOrVolSub) {
+      return `
+        <div class="recipe-fin-item">
+          <span class="recipe-fin-lbl">Rendimento</span>
+          <span class="recipe-fin-val">${formatQty(rec.rendimento)} ${escapeHtml(rec.unidadeRendimento)}</span>
+          <span class="recipe-fin-sub">Panela / lote inteiro</span>
+        </div>
+        <div class="recipe-fin-item">
+          <span class="recipe-fin-lbl">Custo por 100 ${escapeHtml(rec.unidadeRendimento)}</span>
+          <span class="recipe-fin-val gold">${formatBRL(calc.custoUnitario * 100)}</span>
+          <span class="recipe-fin-sub">${formatBRL(calc.custoUnitario, 4)} / ${escapeHtml(rec.unidadeRendimento)}</span>
+        </div>
+        <div class="recipe-fin-item">
+          <span class="recipe-fin-lbl">Custo Total</span>
+          <span class="recipe-fin-val">${formatBRL(calc.custoTotal)}</span>
+          <span class="recipe-fin-sub">c/ ${formatNum(rec.custosIndiretosPct, 0)}% indiretos</span>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="recipe-fin-item">
+        <span class="recipe-fin-lbl">Rendimento</span>
+        <span class="recipe-fin-val">${formatQty(rec.rendimento)} ${escapeHtml(rec.unidadeRendimento)}</span>
+        <span class="recipe-fin-sub">Assadeira / lote</span>
+      </div>
+      <div class="recipe-fin-item">
+        <span class="recipe-fin-lbl">Custo por ${escapeHtml(rec.unidadeRendimento)}</span>
+        <span class="recipe-fin-val gold">${formatBRL(calc.custoUnitario)}</span>
+        <span class="recipe-fin-sub">1/${formatQty(rec.rendimento)} da receita</span>
+      </div>
+      <div class="recipe-fin-item">
+        <span class="recipe-fin-lbl">Custo Total</span>
+        <span class="recipe-fin-val">${formatBRL(calc.custoTotal)}</span>
+        <span class="recipe-fin-sub">c/ ${formatNum(rec.custosIndiretosPct, 0)}% indiretos</span>
+      </div>
+    `;
+  }
+
+  function buildRecipeItemsAndTotalHtml(rec, calc, scale) {
+    const scaledRend = Number(rec.rendimento || 1) * scale;
+    const rowsHtml = calc.breakdown.map((b) => {
+      const qtyScaled = b.quantidade * scale;
+      const costScaled = b.custoTotal * scale;
+      const pct = calc.custoTotal > 0 ? (b.custoTotal / calc.custoTotal) * 100 : 0;
+      const tag = b.tipo === 'subreceita'
+        ? '<span class="recipe-item-tag tag-sub">Base</span>'
+        : (b.isEmbalagem ? '<span class="recipe-item-tag tag-pack">Emb.</span>' : '');
+      return `
         <li class="recipe-item-row">
           <span class="recipe-item-name">
-            ${formatNum(b.quantidade, b.quantidade % 1 === 0 ? 0 : 1)} ${escapeHtml(b.unidade)} • ${escapeHtml(b.nome)}
-            ${b.tipo === 'subreceita' ? '<span class="badge badge-gold" style="padding:1px 6px;font-size:0.68rem;">Sub</span>' : ''}
+            <span class="recipe-item-qty">${formatQty(qtyScaled)} ${escapeHtml(b.unidade)}</span>
+            <span>• ${escapeHtml(b.nome)}</span>
+            ${tag}
           </span>
-          <span class="recipe-item-cost">${formatBRL(b.custoTotal)}</span>
+          <span class="recipe-item-cost">
+            ${formatBRL(costScaled)}
+            <span class="recipe-item-pct">(${formatNum(pct, 0)}%)</span>
+          </span>
         </li>
-      `).join('');
-
-      return `
-        <article class="recipe-card" data-recipe-id="${escapeHtml(rec.id)}">
-          <div class="recipe-card-head">
-            <div>
-              <span class="badge ${isSub ? 'badge-gold' : 'badge-olive'}" style="margin-bottom:6px;">
-                ${isSub ? 'Sub-receita (Massa / Recheio)' : 'Produto Final'}
-              </span>
-              <h3 style="font-size:1.12rem;">${escapeHtml(rec.nome)}</h3>
-            </div>
-            <button class="btn btn-secondary btn-sm btn-edit-recipe" type="button">Editar Ficha</button>
-          </div>
-
-          <div class="recipe-meta-row">
-            <div class="recipe-meta-item">
-              <label>Rendimento Real</label>
-              <div style="display:flex; align-items:center; gap:5px;">
-                <input class="input-inline input-num rec-inline-rend" type="text" inputmode="decimal" value="${formatInputNumber(rec.rendimento)}" style="max-width:66px;" />
-                <span style="font-size:0.8rem; color:var(--text-muted);">${escapeHtml(rec.unidadeRendimento)}</span>
-              </div>
-            </div>
-            <div class="recipe-meta-item">
-              <label>Indiretos (Gás/Luz)</label>
-              <div style="display:flex; align-items:center; gap:4px;">
-                <input class="input-inline input-num rec-inline-ind" type="text" inputmode="decimal" value="${formatInputNumber(rec.custosIndiretosPct)}" style="max-width:60px;" />
-                <span style="font-size:0.8rem; color:var(--text-muted);">%</span>
-              </div>
-            </div>
-            <div class="recipe-meta-item">
-              <label>Custo Unitário</label>
-              <div class="recipe-meta-val rec-unit-cost" style="color:var(--gold-dark); font-size:1.05rem;">
-                ${formatBRL(calc.custoUnitario)}
-              </div>
-            </div>
-          </div>
-
-          <ul class="recipe-items-list">
-            ${itemsHtml}
-            <li class="recipe-item-row" style="border-top:1px solid var(--border-gold); padding-top:6px; margin-top:4px; font-weight:700;">
-              <span class="rec-ind-label">Custos Indiretos (${formatNum(rec.custosIndiretosPct, 0)}%)</span>
-              <span class="rec-ind-cost">${formatBRL(calc.custoIndiretos)}</span>
-            </li>
-            <li class="recipe-item-row" style="font-weight:800; color:var(--text-choco);">
-              <span>Custo Total da Receita</span>
-              <span class="rec-total-cost">${formatBRL(calc.custoTotal)}</span>
-            </li>
-          </ul>
-        </article>
       `;
     }).join('');
+
+    const indRowHtml = Number(rec.custosIndiretosPct || 0) > 0 || calc.custoIndiretos > 0
+      ? `
+        <li class="recipe-item-row" style="border-top:1px solid var(--border-gold); padding-top:6px; margin-top:2px; font-weight:700;">
+          <span class="rec-ind-label">Custos Indiretos (${formatNum(rec.custosIndiretosPct, 0)}%)</span>
+          <span class="rec-ind-cost">${formatBRL(calc.custoIndiretos * scale)}</span>
+        </li>
+      `
+      : '';
+
+    const totalHtml = `
+      <span>Custo p/ ${formatQty(scaledRend)} ${escapeHtml(rec.unidadeRendimento)}</span>
+      <span class="rec-total-cost">${formatBRL(calc.custoTotal * scale)}</span>
+    `;
+
+    return {
+      listHtml: `${rowsHtml}${indRowHtml}`,
+      totalHtml,
+      scalerLabel: scale === 1
+        ? 'Simular receita para:'
+        : `Quantidades p/ ${formatQty(scaledRend)} ${escapeHtml(rec.unidadeRendimento)}:`,
+    };
+  }
+
+  function updateRecipeCardDOM(card, rec, opts = {}) {
+    const calc = calculateRecipeCost(rec.id, state);
+    const scale = Math.max(0.05, Number(recipeScaleMap.get(rec.id) || 1));
+    const finEl = card.querySelector('.recipe-fin-strip');
+    if (finEl) finEl.innerHTML = buildRecipeFinStripHtml(rec, calc);
+
+    const { listHtml, totalHtml, scalerLabel } = buildRecipeItemsAndTotalHtml(rec, calc, scale);
+    const listEl = card.querySelector('.recipe-items-list');
+    if (listEl) listEl.innerHTML = listHtml;
+    const totalEl = card.querySelector('.recipe-total-highlight');
+    if (totalEl) totalEl.innerHTML = totalHtml;
+    const lblEl = card.querySelector('.recipe-scaler-lbl');
+    if (lblEl) lblEl.textContent = scalerLabel;
+
+    card.querySelectorAll('.scaler-btn').forEach((btn) => {
+      const btnScale = Number(btn.dataset.scale);
+      btn.classList.toggle('active', Math.abs(btnScale - scale) < 1e-4);
+    });
+    if (!opts.skipCustomInput) {
+      const customInput = card.querySelector('.scaler-custom-input');
+      if (customInput) customInput.value = formatInputNumber(scale);
+    }
+  }
+
+  function buildRecipeCardHtml(rec) {
+    const calc = calculateRecipeCost(rec.id, state);
+    const isSub = rec.tipo === 'subreceita';
+    const scale = Math.max(0.05, Number(recipeScaleMap.get(rec.id) || 1));
+    const presets = getRecipeScalerPresets(rec);
+    const { listHtml, totalHtml, scalerLabel } = buildRecipeItemsAndTotalHtml(rec, calc, scale);
+
+    return `
+      <article class="recipe-card" data-recipe-id="${escapeHtml(rec.id)}">
+        <div class="recipe-card-head">
+          <div style="min-width:0;">
+            <span class="badge ${isSub ? 'badge-gold' : 'badge-olive'}" style="margin-bottom:6px;">
+              ${isSub ? '🥣 Base / Sub-receita' : '🧁 Produto Final'}
+            </span>
+            <h3 style="font-size:1.12rem;">${escapeHtml(rec.nome)}</h3>
+            ${rec.pesoReferencia ? `<div class="recipe-ref-sub">Ref.: ${escapeHtml(rec.pesoReferencia)}</div>` : ''}
+          </div>
+          <div class="recipe-card-actions">
+            <button class="btn btn-ghost btn-sm btn-dup-recipe" type="button" title="Duplicar ficha">📋 Duplicar</button>
+            <button class="btn btn-secondary btn-sm btn-edit-recipe" type="button">✏️ Editar</button>
+          </div>
+        </div>
+
+        <div class="recipe-fin-strip">
+          ${buildRecipeFinStripHtml(rec, calc)}
+        </div>
+
+        <div class="recipe-scaler-bar">
+          <span class="recipe-scaler-lbl">${scalerLabel}</span>
+          <div class="recipe-scaler-btns">
+            ${presets.map((p) => `
+              <button class="scaler-btn ${Math.abs(p.scale - scale) < 1e-4 ? 'active' : ''}" data-scale="${p.scale}" type="button">${escapeHtml(p.label)}</button>
+            `).join('')}
+            <span style="font-size:0.74rem; color:var(--text-muted); margin-left:2px;">×</span>
+            <input class="scaler-custom-input" type="text" inputmode="decimal" value="${formatInputNumber(scale)}" title="Multiplicador personalizado (ex: 1,5)" />
+          </div>
+        </div>
+
+        <ul class="recipe-items-list">
+          ${listHtml}
+        </ul>
+
+        <div class="recipe-total-highlight">
+          ${totalHtml}
+        </div>
+
+        <div class="recipe-meta-row">
+          <div class="recipe-meta-item">
+            <label>Rendimento Base</label>
+            <div style="display:flex; align-items:center; gap:5px;">
+              <input class="input-inline input-num rec-inline-rend" type="text" inputmode="decimal" value="${formatInputNumber(rec.rendimento)}" style="max-width:68px;" />
+              <span style="font-size:0.78rem; color:var(--text-muted);">${escapeHtml(rec.unidadeRendimento)}</span>
+            </div>
+          </div>
+          <div class="recipe-meta-item">
+            <label>Indiretos (Gás/Luz)</label>
+            <div style="display:flex; align-items:center; gap:4px;">
+              <input class="input-inline input-num rec-inline-ind" type="text" inputmode="decimal" value="${formatInputNumber(rec.custosIndiretosPct)}" style="max-width:62px;" />
+              <span style="font-size:0.78rem; color:var(--text-muted);">%</span>
+            </div>
+          </div>
+        </div>
+
+        <details class="recipe-steps-details">
+          <summary class="recipe-steps-summary">
+            <span>👩‍🍳 Modo de Preparo (${Array.isArray(rec.passos) ? rec.passos.length : 0} passos)</span>
+            <span style="font-size:0.76rem; color:var(--text-muted); font-weight:600;">Expandir</span>
+          </summary>
+          ${Array.isArray(rec.passos) && rec.passos.length
+            ? `<ol class="recipe-steps-list">${rec.passos.map((st) => `<li>${escapeHtml(st)}</li>`).join('')}</ol>`
+            : '<p class="card-desc" style="margin-top:8px;">Nenhum passo cadastrado ainda.</p>'}
+          <div style="margin-top:10px; text-align:right;">
+            <button class="btn btn-secondary btn-sm btn-edit-recipe" type="button">Editar Passo a Passo</button>
+          </div>
+        </details>
+      </article>
+    `;
+  }
+
+  function matchesRecipeSearch(rec, q) {
+    if (!q) return true;
+    const text = `${rec.nome || ''} ${rec.pesoReferencia || ''}`.toLowerCase();
+    if (text.includes(q)) return true;
+    return (rec.itens || []).some((it) => {
+      if (it.tipo === 'insumo') {
+        const ing = state.ingredients.find((i) => i.id === it.refId);
+        return ing && ing.nome.toLowerCase().includes(q);
+      }
+      const sub = state.recipes.find((r) => r.id === it.refId);
+      return sub && sub.nome.toLowerCase().includes(q);
+    });
+  }
+
+  function renderReceitas() {
+    const grid = document.getElementById('recipes-grid');
+    if (!grid) return;
+
+    const totalCount = state.recipes.length;
+    const prodCount = state.recipes.filter((r) => r.tipo === 'produto').length;
+    const subCount = state.recipes.filter((r) => r.tipo === 'subreceita').length;
+    document.querySelectorAll('.recipe-filter').forEach((btn) => {
+      const f = btn.dataset.recipeFilter;
+      if (f === 'todos') btn.textContent = `Todas (${totalCount})`;
+      else if (f === 'produto') btn.textContent = `🧁 Produtos Finais (${prodCount})`;
+      else if (f === 'subreceita') btn.textContent = `🥣 Bases & Recheios (${subCount})`;
+    });
+
+    const q = recipeSearchQuery.trim().toLowerCase();
+    const filtered = state.recipes.filter(
+      (r) => (recipeFilter === 'todos' || r.tipo === recipeFilter) && matchesRecipeSearch(r, q),
+    );
+
+    if (!filtered.length) {
+      grid.innerHTML = `
+        <div class="card" style="text-align:center; padding:32px;">
+          <p class="card-desc" style="font-size:0.95rem; margin:0;">
+            Nenhuma ficha técnica encontrada${q ? ` para "<strong>${escapeHtml(recipeSearchQuery)}</strong>"` : ''}.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    const produtos = filtered.filter((r) => r.tipo === 'produto');
+    const subreceitas = filtered.filter((r) => r.tipo === 'subreceita');
+
+    if (recipeFilter === 'todos') {
+      const sections = [];
+      if (produtos.length) {
+        sections.push(`
+          <div class="recipes-section-block">
+            <div class="recipes-section-header">
+              <h2 class="recipes-section-title">🧁 Produtos Finais (Cardápio de Venda)</h2>
+              <span class="recipes-section-sub">Custo unitário, lucro na venda direta e simulador de produção</span>
+            </div>
+            <div class="recipes-grid">${produtos.map(buildRecipeCardHtml).join('')}</div>
+          </div>
+        `);
+      }
+      if (subreceitas.length) {
+        sections.push(`
+          <div class="recipes-section-block">
+            <div class="recipes-section-header">
+              <h2 class="recipes-section-title">🥣 Bases, Massas &amp; Recheios (Sub-receitas)</h2>
+              <span class="recipes-section-sub">Preparos de cozinha usados na montagem dos produtos finais</span>
+            </div>
+            <div class="recipes-grid">${subreceitas.map(buildRecipeCardHtml).join('')}</div>
+          </div>
+        `);
+      }
+      grid.innerHTML = sections.join('');
+      return;
+    }
+
+    grid.innerHTML = `
+      <div class="recipes-section-block">
+        <div class="recipes-grid">${filtered.map(buildRecipeCardHtml).join('')}</div>
+      </div>
+    `;
   }
 
   // ======================== TAB 4: PRECIFICAÇÃO & COMBOS ========================
@@ -925,26 +1219,149 @@
   // ======================== MODAL DE RECEITA ========================
   let modalRecipeDraft = null;
 
-  function openRecipeModal(recipeId) {
+  function getTempStateWithDraft(draft) {
+    const recipes = state.recipes.some((r) => r.id === draft.id)
+      ? state.recipes.map((r) => (r.id === draft.id ? draft : r))
+      : [...state.recipes, draft];
+    return { ...state, recipes };
+  }
+
+  function getDraftFromModalInputs() {
+    if (!modalRecipeDraft) return null;
+    const draft = clone(modalRecipeDraft);
+    const nomeEl = document.getElementById('rm-nome');
+    const tipoEl = document.getElementById('rm-tipo');
+    const rendEl = document.getElementById('rm-rendimento');
+    const unEl = document.getElementById('rm-unidade');
+    const indEl = document.getElementById('rm-indiretos');
+    const pesoEl = document.getElementById('rm-peso-ref');
+    const precoEl = document.getElementById('rm-preco-venda');
+    if (nomeEl) draft.nome = nomeEl.value.trim() || 'Sem nome';
+    if (tipoEl) draft.tipo = tipoEl.value;
+    if (rendEl) draft.rendimento = Math.max(0.1, parseLocaleNumber(rendEl.value) || 1);
+    if (unEl) draft.unidadeRendimento = unEl.value.trim() || 'un';
+    if (indEl) draft.custosIndiretosPct = Math.max(0, parseLocaleNumber(indEl.value));
+    if (pesoEl) draft.pesoReferencia = pesoEl.value.trim();
+    if (precoEl) draft.precoVendaDireta = Math.max(0, parseLocaleNumber(precoEl.value));
+    return draft;
+  }
+
+  function getModalItemDisplayInfo(item, tempState) {
+    if (item.tipo === 'insumo') {
+      const ing = state.ingredients.find((i) => i.id === item.refId);
+      const unitCost = ing ? getIngredientUnitCost(ing) : 0;
+      return {
+        unit: ing ? ing.unidade : 'g',
+        cost: unitCost * Number(item.quantidade || 0),
+      };
+    }
+    const sub = tempState.recipes.find((r) => r.id === item.refId);
+    const subCalc = sub ? calculateRecipeCost(sub.id, tempState) : null;
+    return {
+      unit: sub ? (sub.unidadeRendimento || 'un') : 'un',
+      cost: (subCalc ? subCalc.custoUnitario : 0) * Number(item.quantidade || 0),
+    };
+  }
+
+  function updateModalLiveSummary() {
+    const draft = getDraftFromModalInputs();
+    if (!draft) return;
+
+    const isProduto = draft.tipo === 'produto';
+    const pricingRow = document.getElementById('rm-product-pricing-row');
+    if (pricingRow) pricingRow.style.display = isProduto ? 'flex' : 'none';
+
+    const tempState = getTempStateWithDraft(draft);
+    const calc = calculateRecipeCost(draft.id, tempState);
+    const custoDireto = calc.custoInsumosDiretos + calc.custoSubreceitas + calc.custoEmbalagens;
+    const unitLower = String(draft.unidadeRendimento || '').trim().toLowerCase();
+    const isWeightOrVolSub = !isProduto && (unitLower === 'g' || unitLower === 'ml');
+
+    const unitCostVal = isWeightOrVolSub ? calc.custoUnitario * 100 : calc.custoUnitario;
+    const unitCostLbl = isWeightOrVolSub
+      ? `Custo p/ 100 ${escapeHtml(draft.unidadeRendimento)}`
+      : `Custo p/ ${escapeHtml(draft.unidadeRendimento)}`;
+
+    let fourthStatHtml = '';
+    if (isProduto) {
+      const pricing = calculateChannelPricing(calc.custoUnitario, Number(draft.precoVendaDireta || 0), state.config);
+      const cls = pricing.status === 'saudavel' ? 'olive' : (pricing.status === 'baixa' ? 'amber' : 'terracotta');
+      fourthStatHtml = `
+        <div class="rm-live-stat">
+          <span class="rm-live-lbl">Lucro na Venda Direta</span>
+          <span class="rm-live-val ${cls}">${formatBRL(pricing.lucroDireto)} (${formatNum(pricing.margemDiretaPct, 1)}%)</span>
+        </div>
+      `;
+      const hintEl = document.getElementById('rm-pricing-hint');
+      if (hintEl) {
+        hintEl.innerHTML = `Custo unit.: <strong>${formatBRL(calc.custoUnitario)}</strong> • Preço mín. p/ ${formatNum(state.config.margemMinima, 0)}% de margem: <strong>${formatBRL(pricing.precoMinimoRecomendado)}</strong> • iFood Básico: <strong>${formatBRL(pricing.ifoodBasico.preco)}</strong>`;
+      }
+    } else {
+      fourthStatHtml = `
+        <div class="rm-live-stat">
+          <span class="rm-live-lbl">Rendimento da Base</span>
+          <span class="rm-live-val">${formatQty(draft.rendimento)} ${escapeHtml(draft.unidadeRendimento)}</span>
+        </div>
+      `;
+    }
+
+    const summaryEl = document.getElementById('rm-live-summary');
+    if (summaryEl) {
+      summaryEl.innerHTML = `
+        <div class="rm-live-stat">
+          <span class="rm-live-lbl">Ingredientes + Bases</span>
+          <span class="rm-live-val">${formatBRL(custoDireto)}</span>
+        </div>
+        <div class="rm-live-stat">
+          <span class="rm-live-lbl">Indiretos (${formatNum(draft.custosIndiretosPct, 0)}%)</span>
+          <span class="rm-live-val">${formatBRL(calc.custoIndiretos)}</span>
+        </div>
+        <div class="rm-live-stat">
+          <span class="rm-live-lbl">${unitCostLbl}</span>
+          <span class="rm-live-val gold">${formatBRL(unitCostVal)}</span>
+        </div>
+        ${fourthStatHtml}
+      `;
+    }
+
+    document.querySelectorAll('#rm-items-container [data-rm-idx]').forEach((row) => {
+      const idx = Number(row.dataset.rmIdx);
+      const item = modalRecipeDraft.itens[idx];
+      if (!item) return;
+      const info = getModalItemDisplayInfo(item, tempState);
+      const unitEl = row.querySelector('.rm-unit-badge');
+      if (unitEl) unitEl.textContent = info.unit;
+      const costEl = row.querySelector('.rm-item-cost-live');
+      if (costEl) costEl.textContent = formatBRL(info.cost);
+    });
+  }
+
+  function openRecipeModal(recipeId, defaultTipo = 'produto') {
     if (recipeId) {
       const existing = state.recipes.find((r) => r.id === recipeId);
       if (!existing) return;
       modalRecipeDraft = clone(existing);
+      if (!Array.isArray(modalRecipeDraft.passos)) modalRecipeDraft.passos = [];
       document.getElementById('recipe-modal-title').textContent = `Editar: ${existing.nome}`;
       document.getElementById('btn-delete-recipe').style.display = 'inline-flex';
     } else {
+      const isSub = defaultTipo === 'subreceita';
       modalRecipeDraft = {
         id: 'rec-' + Date.now(),
-        nome: 'Nova Receita',
-        tipo: 'produto',
-        rendimento: 10,
-        unidadeRendimento: 'un',
-        custosIndiretosPct: state.config.custosIndiretosPadrao,
+        nome: isSub ? 'Nova Base (Massa / Recheio)' : 'Novo Produto Final',
+        tipo: isSub ? 'subreceita' : 'produto',
+        rendimento: isSub ? 10 : 1,
+        unidadeRendimento: isSub ? 'porções' : 'un',
+        pesoReferencia: '',
+        custosIndiretosPct: isSub ? state.config.custosIndiretosPadrao : 0,
         precoVendaDireta: 12.00,
-        fornadasPlanejadas: 1,
+        fornadasPlanejadas: 0,
         itens: [],
+        passos: [''],
       };
-      document.getElementById('recipe-modal-title').textContent = 'Nova Receita / Sub-receita';
+      document.getElementById('recipe-modal-title').textContent = isSub
+        ? 'Nova Base (Massa / Recheio)'
+        : 'Novo Produto Final';
       document.getElementById('btn-delete-recipe').style.display = 'none';
     }
 
@@ -954,8 +1371,12 @@
     document.getElementById('rm-rendimento').value = formatInputNumber(modalRecipeDraft.rendimento);
     document.getElementById('rm-unidade').value = modalRecipeDraft.unidadeRendimento;
     document.getElementById('rm-indiretos').value = formatInputNumber(modalRecipeDraft.custosIndiretosPct);
+    document.getElementById('rm-peso-ref').value = modalRecipeDraft.pesoReferencia || '';
+    document.getElementById('rm-preco-venda').value = formatNum(Number(modalRecipeDraft.precoVendaDireta || 0), 2);
 
     renderModalItems();
+    renderModalSteps();
+    updateModalLiveSummary();
     document.getElementById('recipe-modal-backdrop').classList.add('open');
   }
 
@@ -964,24 +1385,53 @@
     modalRecipeDraft = null;
   }
 
+  function renderModalSteps() {
+    const container = document.getElementById('rm-steps-container');
+    if (!container || !modalRecipeDraft) return;
+    const passos = Array.isArray(modalRecipeDraft.passos) ? modalRecipeDraft.passos : [];
+
+    container.innerHTML = passos.map((txt, idx) => `
+      <div class="rm-step-row" data-step-idx="${idx}">
+        <span class="rm-step-num">${idx + 1}.</span>
+        <textarea class="input rm-step-textarea" placeholder="Descreva o passo ${idx + 1} do preparo...">${escapeHtml(txt)}</textarea>
+        <div class="rm-step-actions">
+          <button class="btn btn-secondary btn-sm rm-step-up" type="button" title="Mover para cima" ${idx === 0 ? 'disabled' : ''}>↑</button>
+          <button class="btn btn-secondary btn-sm rm-step-down" type="button" title="Mover para baixo" ${idx === passos.length - 1 ? 'disabled' : ''}>↓</button>
+          <button class="btn btn-danger-ghost btn-sm rm-step-del" type="button" title="Remover passo">✕</button>
+        </div>
+      </div>
+    `).join('') || '<p style="font-size:0.84rem; color:var(--text-muted);">Clique em "+ Passo" para adicionar instruções de preparo.</p>';
+  }
+
   function renderModalItems() {
     const container = document.getElementById('rm-items-container');
     if (!modalRecipeDraft) return;
     const subs = state.recipes.filter((r) => r.tipo === 'subreceita' && r.id !== modalRecipeDraft.id);
+    const tempState = getTempStateWithDraft(modalRecipeDraft);
 
     container.innerHTML = modalRecipeDraft.itens.map((item, idx) => {
       const optionsHtml = item.tipo === 'insumo'
-        ? state.ingredients.map((i) => `<option value="${escapeHtml(i.id)}" ${i.id === item.refId ? 'selected' : ''}>${escapeHtml(i.nome)} (${escapeHtml(i.unidade)})</option>`).join('')
-        : subs.map((s) => `<option value="${escapeHtml(s.id)}" ${s.id === item.refId ? 'selected' : ''}>[Sub] ${escapeHtml(s.nome)} (${escapeHtml(s.unidadeRendimento)})</option>`).join('');
+        ? state.ingredients.map((i) => `<option value="${escapeHtml(i.id)}" ${i.id === item.refId ? 'selected' : ''}>${escapeHtml(i.nome)} (${formatBRL(i.preco)} / ${formatInputNumber(i.quantidade)} ${escapeHtml(i.unidade)})</option>`).join('')
+        : subs.map((s) => `<option value="${escapeHtml(s.id)}" ${s.id === item.refId ? 'selected' : ''}>${escapeHtml(s.nome)} (rende ${formatQty(s.rendimento)} ${escapeHtml(s.unidadeRendimento)})</option>`).join('');
+
+      const info = getModalItemDisplayInfo(item, tempState);
+      const tagHtml = item.tipo === 'subreceita'
+        ? '<span class="recipe-item-tag tag-sub" style="flex-shrink:0;">Base</span>'
+        : '<span class="recipe-item-tag tag-pack" style="flex-shrink:0;">Insumo</span>';
 
       return `
-        <div style="display:flex; gap:8px; align-items:center;" data-rm-idx="${idx}">
-          <select class="select rm-item-ref" style="flex:1;">${optionsHtml}</select>
-          <input type="text" inputmode="decimal" class="input input-num rm-item-qty" value="${formatInputNumber(item.quantidade)}" style="width:92px;" />
-          <button class="btn btn-danger-ghost btn-sm rm-item-del" type="button">✕</button>
+        <div class="rm-item-row" data-rm-idx="${idx}">
+          ${tagHtml}
+          <select class="select rm-item-ref" style="flex:1; min-width:170px;">${optionsHtml}</select>
+          <div class="rm-qty-wrap">
+            <input type="text" inputmode="decimal" class="input input-num rm-item-qty" value="${formatInputNumber(item.quantidade)}" style="width:94px;" title="Aceita números ou divisão (ex: 250/16)" />
+            <span class="rm-unit-badge">${escapeHtml(info.unit)}</span>
+          </div>
+          <span class="rm-item-cost-live">${formatBRL(info.cost)}</span>
+          <button class="btn btn-danger-ghost btn-sm rm-item-del" type="button" title="Remover item">✕</button>
         </div>
       `;
-    }).join('') || '<p style="font-size:0.84rem; color:var(--text-muted);">Adicione insumos ou sub-receitas abaixo.</p>';
+    }).join('') || '<p style="font-size:0.84rem; color:var(--text-muted);">Adicione insumos ou bases usando os botões acima.</p>';
   }
 
   // ======================== EVENTOS GLOBAIS ========================
@@ -1148,7 +1598,15 @@
       }
     });
 
-    // Receitas filtros & inline
+    // Receitas filtros, busca, simulador & inline
+    const recipeSearchEl = document.getElementById('recipe-search');
+    if (recipeSearchEl) {
+      recipeSearchEl.addEventListener('input', (e) => {
+        recipeSearchQuery = e.target.value;
+        renderReceitas();
+      });
+    }
+
     document.querySelectorAll('.recipe-filter').forEach((btn) => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.recipe-filter').forEach((b) => b.classList.remove('active', 'btn-primary'));
@@ -1158,13 +1616,35 @@
       });
     });
 
-    document.getElementById('btn-new-recipe').addEventListener('click', () => openRecipeModal(null));
-    document.getElementById('btn-quick-new-recipe').addEventListener('click', () => openRecipeModal(null));
+    const newSubBtn = document.getElementById('btn-new-subrecipe');
+    if (newSubBtn) {
+      newSubBtn.addEventListener('click', () => openRecipeModal(null, 'subreceita'));
+    }
+    document.getElementById('btn-new-recipe').addEventListener('click', () => openRecipeModal(null, 'produto'));
+    document.getElementById('btn-quick-new-recipe').addEventListener('click', () => openRecipeModal(null, 'produto'));
 
     document.getElementById('recipes-grid').addEventListener('click', (e) => {
-      if (e.target.classList.contains('btn-edit-recipe')) {
-        const card = e.target.closest('.recipe-card');
-        openRecipeModal(card.dataset.recipeId);
+      const card = e.target.closest('.recipe-card');
+      if (!card) return;
+      const rec = state.recipes.find((r) => r.id === card.dataset.recipeId);
+      if (!rec) return;
+
+      if (e.target.closest('.btn-edit-recipe')) {
+        openRecipeModal(rec.id);
+      } else if (e.target.closest('.btn-dup-recipe')) {
+        const copy = clone(rec);
+        copy.id = 'rec-' + Date.now();
+        copy.nome = `${rec.nome} (Cópia)`;
+        copy.fornadasPlanejadas = 0;
+        const origIdx = state.recipes.findIndex((r) => r.id === rec.id);
+        state.recipes.splice(origIdx + 1, 0, copy);
+        saveState();
+        renderReceitas();
+        showToast('Ficha duplicada! Clique em Editar para ajustar.');
+      } else if (e.target.classList.contains('scaler-btn')) {
+        const scale = Math.max(0.05, Number(e.target.dataset.scale) || 1);
+        recipeScaleMap.set(rec.id, scale);
+        updateRecipeCardDOM(card, rec);
       }
     });
 
@@ -1173,6 +1653,14 @@
       if (!card) return;
       const rec = state.recipes.find((r) => r.id === card.dataset.recipeId);
       if (!rec) return;
+
+      if (e.target.classList.contains('scaler-custom-input')) {
+        const scale = Math.max(0.05, parseLocaleNumber(e.target.value) || 1);
+        recipeScaleMap.set(rec.id, scale);
+        updateRecipeCardDOM(card, rec, { skipCustomInput: true });
+        return;
+      }
+
       if (e.target.classList.contains('rec-inline-rend')) {
         rec.rendimento = Math.max(0.1, parseLocaleNumber(e.target.value) || 1);
       } else if (e.target.classList.contains('rec-inline-ind')) {
@@ -1181,25 +1669,47 @@
         return;
       }
       saveState();
-      const calc = calculateRecipeCost(rec.id, state);
-      const unitEl = card.querySelector('.rec-unit-cost');
-      if (unitEl) unitEl.textContent = formatBRL(calc.custoUnitario);
-      const indLabelEl = card.querySelector('.rec-ind-label');
-      if (indLabelEl) indLabelEl.textContent = `Custos Indiretos (${formatNum(rec.custosIndiretosPct, 0)}%)`;
-      const indCostEl = card.querySelector('.rec-ind-cost');
-      if (indCostEl) indCostEl.textContent = formatBRL(calc.custoIndiretos);
-      const totalCostEl = card.querySelector('.rec-total-cost');
-      if (totalCostEl) totalCostEl.textContent = formatBRL(calc.custoTotal);
+      updateRecipeCardDOM(card, rec);
+      if (rec.tipo === 'subreceita') {
+        document.querySelectorAll('#recipes-grid .recipe-card').forEach((otherCard) => {
+          if (otherCard === card) return;
+          const otherRec = state.recipes.find((r) => r.id === otherCard.dataset.recipeId);
+          if (otherRec) updateRecipeCardDOM(otherCard, otherRec);
+        });
+      }
+    });
+
+    document.getElementById('recipes-grid').addEventListener('focusout', (e) => {
+      if (!e.target.classList.contains('scaler-custom-input')) return;
+      const card = e.target.closest('.recipe-card');
+      if (!card) return;
+      const scale = recipeScaleMap.get(card.dataset.recipeId) || 1;
+      e.target.value = formatInputNumber(scale);
     });
 
     // Modal de receita
     document.getElementById('btn-close-recipe-modal').addEventListener('click', closeRecipeModal);
     document.getElementById('btn-cancel-recipe-modal').addEventListener('click', closeRecipeModal);
 
+    ['rm-nome', 'rm-tipo', 'rm-rendimento', 'rm-unidade', 'rm-indiretos', 'rm-peso-ref', 'rm-preco-venda'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const evt = id === 'rm-tipo' ? 'change' : 'input';
+      el.addEventListener(evt, updateModalLiveSummary);
+    });
+
+    const rmPrecoEl = document.getElementById('rm-preco-venda');
+    if (rmPrecoEl) {
+      rmPrecoEl.addEventListener('focusout', (e) => {
+        e.target.value = formatNum(Math.max(0, parseLocaleNumber(e.target.value)), 2);
+      });
+    }
+
     document.getElementById('rm-add-insumo').addEventListener('click', () => {
       if (!modalRecipeDraft || !state.ingredients.length) return;
       modalRecipeDraft.itens.push({ tipo: 'insumo', refId: state.ingredients[0].id, quantidade: 100 });
       renderModalItems();
+      updateModalLiveSummary();
     });
 
     document.getElementById('rm-add-sub').addEventListener('click', () => {
@@ -1210,6 +1720,7 @@
       }
       modalRecipeDraft.itens.push({ tipo: 'subreceita', refId: subs[0].id, quantidade: 1 });
       renderModalItems();
+      updateModalLiveSummary();
     });
 
     document.getElementById('rm-items-container').addEventListener('input', (e) => {
@@ -1218,6 +1729,7 @@
       const idx = Number(row.dataset.rmIdx);
       if (e.target.classList.contains('rm-item-qty')) {
         modalRecipeDraft.itens[idx].quantidade = Math.max(0, parseLocaleNumber(e.target.value));
+        updateModalLiveSummary();
       }
     });
 
@@ -1227,8 +1739,20 @@
       const idx = Number(row.dataset.rmIdx);
       if (e.target.classList.contains('rm-item-ref')) {
         modalRecipeDraft.itens[idx].refId = e.target.value;
+        updateModalLiveSummary();
       } else if (e.target.classList.contains('rm-item-qty')) {
         modalRecipeDraft.itens[idx].quantidade = Math.max(0, parseLocaleNumber(e.target.value));
+        updateModalLiveSummary();
+      }
+    });
+
+    document.getElementById('rm-items-container').addEventListener('focusout', (e) => {
+      if (!e.target.classList.contains('rm-item-qty') || !modalRecipeDraft) return;
+      const row = e.target.closest('[data-rm-idx]');
+      if (!row) return;
+      const idx = Number(row.dataset.rmIdx);
+      if (modalRecipeDraft.itens[idx]) {
+        e.target.value = formatInputNumber(modalRecipeDraft.itens[idx].quantidade);
       }
     });
 
@@ -1238,6 +1762,42 @@
       const idx = Number(row.dataset.rmIdx);
       modalRecipeDraft.itens.splice(idx, 1);
       renderModalItems();
+      updateModalLiveSummary();
+    });
+
+    document.getElementById('rm-add-passo').addEventListener('click', () => {
+      if (!modalRecipeDraft) return;
+      if (!Array.isArray(modalRecipeDraft.passos)) modalRecipeDraft.passos = [];
+      modalRecipeDraft.passos.push('');
+      renderModalSteps();
+      const textareas = document.querySelectorAll('#rm-steps-container .rm-step-textarea');
+      if (textareas.length) textareas[textareas.length - 1].focus();
+    });
+
+    document.getElementById('rm-steps-container').addEventListener('input', (e) => {
+      if (!e.target.classList.contains('rm-step-textarea') || !modalRecipeDraft) return;
+      const row = e.target.closest('[data-step-idx]');
+      if (!row) return;
+      const idx = Number(row.dataset.stepIdx);
+      modalRecipeDraft.passos[idx] = e.target.value;
+    });
+
+    document.getElementById('rm-steps-container').addEventListener('click', (e) => {
+      const row = e.target.closest('[data-step-idx]');
+      if (!row || !modalRecipeDraft) return;
+      const idx = Number(row.dataset.stepIdx);
+      const passos = modalRecipeDraft.passos;
+
+      if (e.target.classList.contains('rm-step-del')) {
+        passos.splice(idx, 1);
+        renderModalSteps();
+      } else if (e.target.classList.contains('rm-step-up') && idx > 0) {
+        [passos[idx - 1], passos[idx]] = [passos[idx], passos[idx - 1]];
+        renderModalSteps();
+      } else if (e.target.classList.contains('rm-step-down') && idx < passos.length - 1) {
+        [passos[idx], passos[idx + 1]] = [passos[idx + 1], passos[idx]];
+        renderModalSteps();
+      }
     });
 
     document.getElementById('btn-save-recipe-modal').addEventListener('click', () => {
@@ -1247,6 +1807,11 @@
       modalRecipeDraft.rendimento = Math.max(0.1, parseLocaleNumber(document.getElementById('rm-rendimento').value) || 1);
       modalRecipeDraft.unidadeRendimento = document.getElementById('rm-unidade').value.trim() || 'un';
       modalRecipeDraft.custosIndiretosPct = Math.max(0, parseLocaleNumber(document.getElementById('rm-indiretos').value));
+      modalRecipeDraft.pesoReferencia = document.getElementById('rm-peso-ref').value.trim();
+      if (modalRecipeDraft.tipo === 'produto') {
+        modalRecipeDraft.precoVendaDireta = Math.max(0, parseLocaleNumber(document.getElementById('rm-preco-venda').value));
+      }
+      modalRecipeDraft.passos = (modalRecipeDraft.passos || []).map((s) => String(s).trim()).filter(Boolean);
 
       const idx = state.recipes.findIndex((r) => r.id === modalRecipeDraft.id);
       if (idx >= 0) state.recipes[idx] = modalRecipeDraft;
@@ -1255,7 +1820,7 @@
       saveState();
       closeRecipeModal();
       renderActiveTab();
-      showToast('Receita salva com sucesso!');
+      showToast('Ficha técnica salva com sucesso!');
     });
 
     document.getElementById('btn-delete-recipe').addEventListener('click', () => {

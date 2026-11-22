@@ -35,25 +35,63 @@
        - Traçado draw-line/sketch em SVG + preenchimento da logo oficial
        - Transição de escala e deslocamento para a barra de navegação
        ======================================================================== -->
-  <div id="intro-overlay" class="intro-overlay" aria-label="Animação de abertura Ana's Bakery">
+  <div id="intro-overlay" class="intro-overlay" aria-label="Animação de abertura Ana's Bakery" title="Clique para pular">
+    <!-- Calda de chocolate escorrendo no topo -->
+    <svg class="intro-drip-top" viewBox="0 0 1440 150" preserveAspectRatio="none" aria-hidden="true">
+      <path class="drip-layer-caramel" d="M0,0 L1440,0 L1440,55 C1360,95 1290,35 1200,75 C1110,115 1040,40 940,85 C840,130 760,35 660,80 C560,125 480,45 380,90 C280,135 190,40 100,75 C40,98 15,60 0,70 Z" />
+      <path class="drip-layer-choco" d="M0,0 L1440,0 L1440,40 C1380,75 1310,25 1230,60 C1140,100 1070,25 980,68 C890,110 810,20 710,72 C610,124 530,30 430,70 C330,110 250,25 150,62 C70,92 30,40 0,52 Z" />
+    </svg>
+
     <div id="intro-stage" class="intro-stage">
+      <!-- Halo brilhante de fundo -->
+      <div class="intro-glow-halo" aria-hidden="true"></div>
+
+      <!-- Anel tipográfico giratório -->
+      <svg class="intro-orbit-ring" viewBox="0 0 280 280" aria-hidden="true">
+        <defs>
+          <path id="intro-ring-text-path" d="M 140, 140 m -116, 0 a 116,116 0 1,1 232,0 a 116,116 0 1,1 -232,0" />
+        </defs>
+        <circle cx="140" cy="140" r="126" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 8" opacity="0.45" />
+        <text font-size="10.5" font-weight="800" letter-spacing="3.3" fill="currentColor">
+          <textPath href="#intro-ring-text-path">ANA'S BAKERY • FLORIANÓPOLIS • SOB ENCOMENDA •</textPath>
+        </text>
+      </svg>
+
+      <!-- Explosão de gotas de chocolate, mini cookies e brilhos -->
+      <div class="intro-burst" aria-hidden="true">
+        <span class="intro-particle p1">🍪</span>
+        <span class="intro-particle p2">🍫</span>
+        <span class="intro-particle p3">✨</span>
+        <span class="intro-particle p4">🍪</span>
+        <span class="intro-particle p5">🍯</span>
+        <span class="intro-particle p6">✨</span>
+        <span class="intro-particle p7">🍫</span>
+        <span class="intro-particle p8">🍪</span>
+      </div>
+
       <!-- SVG de traçado (draw-line sketch effect) -->
       <svg class="intro-sketch-svg" viewBox="0 0 240 240" aria-hidden="true">
-        <!-- Círculo externo e interno -->
         <circle class="sketch-path" cx="120" cy="120" r="106" />
         <circle class="sketch-path gold" cx="120" cy="120" r="92" />
-        <!-- Arco ondulado de cookie -->
         <path class="sketch-path gold" d="M 38 135 C 32 82, 72 36, 120 36 C 168 36, 208 82, 202 135" />
-        <!-- Monograma 'A' central com textura de waffle -->
         <path class="sketch-path" d="M 68 152 L 106 54 L 136 54 L 174 152 L 146 152 L 120 82 L 94 148" />
-        <!-- Onda de Florianópolis na base do 'A' -->
         <path class="sketch-path caramel" d="M 52 156 C 78 152, 98 118, 125 126 C 110 138, 118 166, 156 158 C 135 178, 92 178, 68 158 Z" />
       </svg>
 
-      <!-- Logo oficial circular que preenche com chocolate e dourado -->
-      <img src="assets/logo.png" alt="Logo Ana's Bakery" class="intro-logo-fill" />
+      <!-- Logo oficial circular com sweep de brilho -->
+      <div class="intro-logo-badge">
+        <img src="assets/logo.png" alt="Logo Ana's Bakery" class="intro-logo-fill" />
+        <span class="intro-logo-shine" aria-hidden="true"></span>
+      </div>
     </div>
-    <p class="intro-caption">Preparando doces artesanais com carinho em Florianópolis...</p>
+
+    <div class="intro-meta">
+      <div class="intro-brand-title">Ana's Bakery</div>
+      <p class="intro-caption">Fornada artesanal saindo com carinho em Florianópolis...</p>
+      <div class="intro-progress-track" aria-hidden="true">
+        <div class="intro-progress-fill"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Camada de Migalhas e Gotas Flutuantes no Scroll (Item 4) -->
@@ -428,103 +466,138 @@
 
     <div class="menu-filters" role="tablist" aria-label="Categorias do cardápio">
       <button type="button" class="filter-btn active" data-filter="todos">Todos os Doces</button>
-      <button type="button" class="filter-btn" data-filter="cookies">Cookies Artesanais</button>
-      <button type="button" class="filter-btn" data-filter="trufas">Cones &amp; Trufas</button>
-      <button type="button" class="filter-btn" data-filter="combos">Kits Sob Encomenda</button>
+      <button type="button" class="filter-btn" data-filter="pao-de-mel">Pão de Mel &amp; Alfajor</button>
+      <button type="button" class="filter-btn" data-filter="cookies">Cookies &amp; Brownie</button>
+      <button type="button" class="filter-btn" data-filter="trufas">Cones &amp; Brigadeiros</button>
+      <button type="button" class="filter-btn" data-filter="combos">Combos</button>
     </div>
 
     <div id="menu-grid" class="menu-grid">
-      <!-- Item 1 -->
-      <article class="product-card" data-category="cookies" data-name="cookie classico floripa gotas chocolate">
+      <!-- Item 1: Pão de Mel Individual -->
+      <article class="product-card" data-category="pao-de-mel" data-name="pao de mel individual brigadeiro cafe doce de leite">
+        <span class="product-badge">Artesanal</span>
+        <div class="product-illustration">
+          <img class="product-photo" src="assets/pao-de-mel-individual.jpg" alt="Foto real do Pão de Mel Individual artesanal sem cobertura recheado com brigadeiro de café e doce de leite" loading="lazy" />
+        </div>
+        <div>
+          <h3 class="product-title">Pão de Mel Individual (Sem Cobertura)</h3>
+          <p class="product-desc">Massa fofinha de mel e especiarias (~130 g) recheada com brigadeiro de café e doce de leite caseiro de Leite Moça cozido.</p>
+        </div>
+        <div class="product-footer">
+          <span class="product-price">R$ 10,00</span>
+          <button type="button" class="btn-add-item" data-item="Pão de Mel Individual">Encomendar +</button>
+        </div>
+      </article>
+
+      <!-- Item 2: Pão de Mel Tamanho Família -->
+      <article class="product-card" data-category="pao-de-mel" data-name="pao de mel tamanho familia 8 porcoes brigadeiro cafe doce de leite">
+        <span class="product-badge">Tamanho Família</span>
+        <div class="product-illustration">
+          <img class="product-photo" src="assets/pao-de-mel-familia.jpg" alt="Foto real do Pão de Mel Tamanho Família recheado com brigadeiro de café e doce de leite" loading="lazy" />
+        </div>
+        <div>
+          <h3 class="product-title">Pão de Mel Tamanho Família</h3>
+          <p class="product-desc">Versão especial (~1.030 g) em caixa presenteável para compartilhar, com camadas generosas de brigadeiro de café e doce de leite caseiro.</p>
+        </div>
+        <div class="product-footer">
+          <span class="product-price">R$ 65,00</span>
+          <button type="button" class="btn-add-item" data-item="Pão de Mel Tamanho Família">Encomendar +</button>
+        </div>
+      </article>
+
+      <!-- Item 3: Cookie NY Style -->
+      <article class="product-card" data-category="cookies" data-name="cookie ny style 90g gotas chocolate nobre">
         <span class="product-badge">Mais Pedido</span>
         <div class="product-illustration">
-          <svg viewBox="0 0 140 140">
-            <circle cx="70" cy="70" r="54" fill="#E5A93B" stroke="#3C1F15" stroke-width="6" />
-            <path d="M24 78 C32 108, 56 120, 82 118 C108 115, 118 92, 120 74 C108 98, 86 108, 64 108 C42 108, 30 94, 24 78 Z" fill="#C58C3E" />
-            <circle cx="52" cy="48" r="8" fill="#3C1F15" />
-            <circle cx="86" cy="52" r="9" fill="#3C1F15" />
-            <circle cx="68" cy="76" r="9.5" fill="#3C1F15" />
-            <circle cx="46" cy="84" r="7.5" fill="#3C1F15" />
-            <circle cx="92" cy="88" r="8" fill="#3C1F15" />
-          </svg>
+          <img class="product-photo" src="assets/cookie-ny.jpg" alt="Cookies NY Style altos com gotas de chocolate nobre derretendo" loading="lazy" />
         </div>
         <div>
-          <h3 class="product-title">Cookie Clássico da Ilha</h3>
-          <p class="product-desc">Massa dourada amanteigada com borda crocante, miolo macio e generosas gotas de chocolate meio amargo, assado para o seu pedido.</p>
+          <h3 class="product-title">Cookie NY Style (90 g)</h3>
+          <p class="product-desc">Massa alta amanteigada com açúcar mascavo, borda dourada crocante, centro macio e pedaços generosos de chocolate nobre.</p>
         </div>
         <div class="product-footer">
-          <span class="product-price">R$ 16,90</span>
-          <button type="button" class="btn-add-item" data-item="Cookie Clássico da Ilha">Encomendar +</button>
+          <span class="product-price">R$ 14,00</span>
+          <button type="button" class="btn-add-item" data-item="Cookie NY Style (90 g)">Encomendar +</button>
         </div>
       </article>
 
-      <!-- Item 2 -->
-      <article class="product-card" data-category="trufas" data-name="cone trufado waffle chocolate">
-        <span class="product-badge">Exclusivo</span>
+      <!-- Item 4: Cone Recheado Trufado -->
+      <article class="product-card" data-category="trufas" data-name="cone recheado trufado 110g waffle chocolate nobre">
+        <span class="product-badge">Trufa Nobre</span>
         <div class="product-illustration">
-          <svg viewBox="0 0 140 140">
-            <path d="M46 58 L70 128 L94 58 Z" fill="#E5A93B" stroke="#3C1F15" stroke-width="5.5" stroke-linejoin="round" />
-            <line x1="52" y1="72" x2="86" y2="90" stroke="#3C1F15" stroke-width="3" />
-            <line x1="88" y1="72" x2="54" y2="90" stroke="#3C1F15" stroke-width="3" />
-            <path d="M38 52 C36 28, 52 14, 70 14 C88 14, 104 28, 102 52 C104 60, 94 66, 86 62 C78 68, 62 68, 54 62 C46 66, 36 60, 38 52 Z" fill="#3C1F15" />
-            <circle cx="60" cy="36" r="3" fill="#E5A93B" />
-            <circle cx="80" cy="40" r="3" fill="#E5A93B" />
-            <circle cx="70" cy="48" r="3" fill="#C58C3E" />
-          </svg>
+          <img class="product-photo" src="assets/cone-trufado.jpg" alt="Cone de waffle crocante trufado com ganache de chocolate nobre" loading="lazy" />
         </div>
         <div>
-          <h3 class="product-title">Cone Waffle Trufado</h3>
-          <p class="product-desc">Casquinha crocante banhada por dentro em chocolate e recheada sob encomenda com ganache trufada intensa.</p>
+          <h3 class="product-title">Cone Recheado Trufado (110 g)</h3>
+          <p class="product-desc">Casquinha crocante banhada por dentro em chocolate e recheada sob encomenda com ganache trufada de chocolate nobre.</p>
         </div>
         <div class="product-footer">
-          <span class="product-price">R$ 21,90</span>
-          <button type="button" class="btn-add-item" data-item="Cone Waffle Trufado">Encomendar +</button>
+          <span class="product-price">R$ 14,00</span>
+          <button type="button" class="btn-add-item" data-item="Cone Recheado Trufado (110 g)">Encomendar +</button>
         </div>
       </article>
 
-      <!-- Item 3 -->
-      <article class="product-card" data-category="cookies" data-name="cookie caramelo flor de sal">
-        <span class="product-badge">Sob Encomenda</span>
+      <!-- Item 5: Brownie Fudgy -->
+      <article class="product-card" data-category="cookies" data-name="brownie fudgy 80g chocolate nobre cacau">
+        <span class="product-badge">Casquinha Craquelada</span>
         <div class="product-illustration">
-          <svg viewBox="0 0 140 140">
-            <path d="M98 28 C92 36, 100 48, 112 45 C118 78, 96 122, 66 122 C36 122, 18 98, 18 68 C18 38, 42 18, 72 18 C84 18, 92 22, 98 28 Z" fill="#C58C3E" stroke="#3C1F15" stroke-width="6" />
-            <path d="M38 64 Q68 46 92 72 T52 96" fill="none" stroke="#E5A93B" stroke-width="6" stroke-linecap="round" />
-            <circle cx="52" cy="46" r="7.5" fill="#3C1F15" />
-            <circle cx="80" cy="82" r="8.5" fill="#3C1F15" />
-            <circle cx="48" cy="88" r="7" fill="#3C1F15" />
-          </svg>
+          <img class="product-photo" src="assets/brownie-fudgy.jpg" alt="Brownie Fudgy artesanal com casquinha craquelada e interior úmido" loading="lazy" />
         </div>
         <div>
-          <h3 class="product-title">Cookie Onda de Caramelo</h3>
-          <p class="product-desc">Recheio cremoso de caramelo artesanal com toque de flor de sal de Santa Catarina e gotas de chocolate amargo.</p>
+          <h3 class="product-title">Brownie Fudgy (80 g)</h3>
+          <p class="product-desc">Brownie intenso preparado com chocolate nobre, cacau 100% e manteiga, com casquinha craquelada e interior úmido.</p>
         </div>
         <div class="product-footer">
-          <span class="product-price">R$ 18,90</span>
-          <button type="button" class="btn-add-item" data-item="Cookie Onda de Caramelo">Encomendar +</button>
+          <span class="product-price">R$ 12,00</span>
+          <button type="button" class="btn-add-item" data-item="Brownie Fudgy (80 g)">Encomendar +</button>
         </div>
       </article>
 
-      <!-- Item 4 -->
-      <article class="product-card" data-category="combos" data-name="combo degustacao 6 cookies encomenda">
-        <span class="product-badge">Kit Especial</span>
+      <!-- Item 6: Alfajor Artesanal -->
+      <article class="product-card" data-category="pao-de-mel" data-name="alfajor artesanal 65g massa propria doce de leite">
+        <span class="product-badge">Massa Própria</span>
         <div class="product-illustration">
-          <svg viewBox="0 0 160 140">
-            <circle cx="58" cy="72" r="36" fill="#E5A93B" stroke="#3C1F15" stroke-width="5.5" />
-            <circle cx="48" cy="62" r="5.5" fill="#3C1F15" />
-            <circle cx="66" cy="78" r="6" fill="#3C1F15" />
-            <circle cx="102" cy="68" r="36" fill="#C58C3E" stroke="#3C1F15" stroke-width="5.5" />
-            <circle cx="94" cy="56" r="6" fill="#3C1F15" />
-            <circle cx="112" cy="72" r="6.5" fill="#3C1F15" />
-            <circle cx="96" cy="82" r="5" fill="#3C1F15" />
-          </svg>
+          <img class="product-photo" src="assets/alfajor-artesanal.jpg" alt="Foto real dos Alfajores Artesanais de massa própria banhados no chocolate sobre mármore" loading="lazy" />
         </div>
         <div>
-          <h3 class="product-title">Kit Degustação (6 Cookies)</h3>
-          <p class="product-desc">Monte sua seleção com 6 cookies artesanais preparados sob encomenda para compartilhar ou presentear.</p>
+          <h3 class="product-title">Alfajor Artesanal (65 g)</h3>
+          <p class="product-desc">Discos artesanais de massa própria que derretem na boca, recheados com doce de leite caseiro e banhados no chocolate.</p>
         </div>
         <div class="product-footer">
-          <span class="product-price">R$ 89,90</span>
-          <button type="button" class="btn-add-item" data-item="Kit Degustação (6 Cookies)">Encomendar +</button>
+          <span class="product-price">R$ 8,50</span>
+          <button type="button" class="btn-add-item" data-item="Alfajor Artesanal (65 g)">Encomendar +</button>
+        </div>
+      </article>
+
+      <!-- Item 7: Brigadeiro Gourmet -->
+      <article class="product-card" data-category="trufas" data-name="brigadeiro gourmet 20g cacau 100 granulado">
+        <span class="product-badge">Cacau 100%</span>
+        <div class="product-illustration">
+          <img class="product-photo" src="assets/brigadeiro-gourmet.jpg" alt="Brigadeiros gourmet de cacau 100% passados no granulado" loading="lazy" />
+        </div>
+        <div>
+          <h3 class="product-title">Brigadeiro Gourmet (20 g)</h3>
+          <p class="product-desc">Cremoso na medida certa com cacau em pó 100%, manteiga sem sal e finalizado no granulado gourmet.</p>
+        </div>
+        <div class="product-footer">
+          <span class="product-price">R$ 4,50</span>
+          <button type="button" class="btn-add-item" data-item="Brigadeiro Gourmet (20 g)">Encomendar +</button>
+        </div>
+      </article>
+
+      <!-- Item 8: Caixa Degustação Ana's Bakery -->
+      <article class="product-card" data-category="combos" data-name="caixa degustacao anas bakery combo cookie cone brigadeiro">
+        <span class="product-badge">Combo -5%</span>
+        <div class="product-illustration">
+          <img class="product-photo" src="assets/caixa-degustacao.jpg" alt="Caixa Degustação Ana's Bakery com doces artesanais variados" loading="lazy" />
+        </div>
+        <div>
+          <h3 class="product-title">Caixa Degustação Ana's Bakery</h3>
+          <p class="product-desc">Combo especial em caixa presenteável com 1 Cookie NY Style, 1 Cone Recheado Trufado e 2 Brigadeiros Gourmet.</p>
+        </div>
+        <div class="product-footer">
+          <span class="product-price">R$ 35,15</span>
+          <button type="button" class="btn-add-item" data-item="Caixa Degustação Ana's Bakery">Encomendar +</button>
         </div>
       </article>
     </div>
@@ -621,6 +694,15 @@
     <p class="footer-cnpj-line">
       Ana Mayra Viganigo Martins &middot; CNPJ 61.538.015/0001-00
     </p>
+    <div style="margin-top: 6px;">
+      <a href="/gestao" class="btn-replay-intro" aria-label="Acessar Painel de Gestão Restrito">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+        Área de Gestão
+      </a>
+    </div>
   </footer>
 
   <!-- Toast de Notificação em PT-BR -->

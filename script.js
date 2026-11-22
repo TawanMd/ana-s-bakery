@@ -130,29 +130,46 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ------------------------------------------------------------------------
-     1. ANIMAÇÃO DE INTRODUÇÃO / CARREGAMENTO (0 - 1.5s)
-        - 0.00s - 0.65s: Desenho em linha (sketch draw-line) da logo no centro
-        - 0.65s - 1.05s: Preenchimento colorido com chocolate e dourado
-        - 1.05s - 1.50s: Transição de escala e deslocamento até o canto superior esquerdo
-        - 1.45s+: Entrada com bounce (0.5s cubic-bezier(0.25, 1, 0.50, 1)) da Headline e CTA
+     1. ANIMAÇÃO DE INTRODUÇÃO / CARREGAMENTO (0 - 2.0s)
+        - 0.00s - 0.52s: Calda no topo + sketch dourado + barra de progresso
+        - 0.52s - 1.45s: Pop elástico da logo + explosão de partículas + brilho
+        - 1.45s - 1.95s: Transição suave até o canto superior esquerdo
+        - Clique em qualquer lugar da intro pula imediatamente para a vitrine
      ------------------------------------------------------------------------ */
+  let introTimers = [];
+
+  function clearIntroTimers() {
+    introTimers.forEach((id) => clearTimeout(id));
+    introTimers = [];
+  }
+
+  function finishIntroImmediately() {
+    clearIntroTimers();
+    introOverlay.classList.add('is-hidden');
+    document.body.classList.add('intro-complete');
+  }
+
+  function restartCssAnimation(selector) {
+    introOverlay.querySelectorAll(selector).forEach((el) => {
+      el.style.animation = 'none';
+      void el.offsetWidth;
+      el.style.animation = '';
+    });
+  }
+
   function runIntroAnimation() {
+    clearIntroTimers();
     document.body.classList.remove('intro-complete');
     introOverlay.classList.remove('is-hidden', 'phase-fill', 'phase-move');
     introStage.style.transform = 'translate3d(0, 0, 0) scale(1)';
 
-    const sketchPaths = introOverlay.querySelectorAll('.sketch-path');
-    sketchPaths.forEach((p) => {
-      p.style.animation = 'none';
-      void p.offsetWidth;
-      p.style.animation = '';
-    });
+    restartCssAnimation('.sketch-path, .intro-drip-top, .intro-brand-title, .intro-caption, .intro-progress-fill, .intro-particle, .intro-logo-shine');
 
-    setTimeout(() => {
+    introTimers.push(setTimeout(() => {
       introOverlay.classList.add('phase-fill');
-    }, 620);
+    }, 520));
 
-    setTimeout(() => {
+    introTimers.push(setTimeout(() => {
       introOverlay.classList.add('phase-move');
       if (navLogoTarget && introStage) {
         const stageRect = introStage.getBoundingClientRect();
@@ -165,19 +182,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const dx = targetCenterX - stageCenterX;
         const dy = targetCenterY - stageCenterY;
-        const scale = targetRect.width / 210;
+        const scale = targetRect.width / 206;
 
         introStage.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${scale})`;
       }
-    }, 1020);
+    }, 1450));
 
-    setTimeout(() => {
-      introOverlay.classList.add('is-hidden');
-      document.body.classList.add('intro-complete');
-    }, 1480);
+    introTimers.push(setTimeout(finishIntroImmediately, 1950));
   }
 
   runIntroAnimation();
+
+  if (introOverlay) {
+    introOverlay.addEventListener('click', finishIntroImmediately);
+  }
 
   if (btnReplayIntro) {
     btnReplayIntro.addEventListener('click', () => {

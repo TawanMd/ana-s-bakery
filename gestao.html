@@ -203,16 +203,31 @@
 
         <!-- ==================== TAB 3: FICHAS TÉCNICAS & RECEITAS ==================== -->
         <section id="tab-receitas" class="tab-panel">
-          <div class="toolbar">
-            <div class="search-group">
-              <button class="btn btn-secondary btn-sm recipe-filter active" data-recipe-filter="todos" type="button">Todas</button>
-              <button class="btn btn-secondary btn-sm recipe-filter" data-recipe-filter="subreceita" type="button">Sub-receitas (Massas &amp; Recheios)</button>
-              <button class="btn btn-secondary btn-sm recipe-filter" data-recipe-filter="produto" type="button">Produtos Finais</button>
+          <div class="recipe-helper-banner">
+            <div class="recipe-helper-item">
+              <span class="badge badge-gold">🥣 Bases (Massas &amp; Recheios)</span>
+              <span>Receitas de cozinha (assadeira ou panela) usadas como base nos doces.</span>
             </div>
-            <button id="btn-new-recipe" class="btn btn-primary" type="button">+ Criar Receita / Sub-receita</button>
+            <div class="recipe-helper-item">
+              <span class="badge badge-olive">🧁 Produtos Finais</span>
+              <span>Unidade de venda com custo exato, lucro e simulador de produção (1, 4, 8, 16 un).</span>
+            </div>
           </div>
 
-          <div class="recipes-grid" id="recipes-grid"></div>
+          <div class="toolbar">
+            <div class="search-group">
+              <input id="recipe-search" type="search" class="input" placeholder="Buscar ficha ou ingrediente..." style="min-width:220px;" />
+              <button class="btn btn-secondary btn-sm recipe-filter active" data-recipe-filter="todos" type="button">Todas</button>
+              <button class="btn btn-secondary btn-sm recipe-filter" data-recipe-filter="produto" type="button">🧁 Produtos Finais</button>
+              <button class="btn btn-secondary btn-sm recipe-filter" data-recipe-filter="subreceita" type="button">🥣 Bases &amp; Recheios</button>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button id="btn-new-subrecipe" class="btn btn-secondary btn-sm" type="button">+ Nova Base</button>
+              <button id="btn-new-recipe" class="btn btn-primary btn-sm" type="button">+ Novo Produto Final</button>
+            </div>
+          </div>
+
+          <div id="recipes-grid" class="recipes-sections-stack"></div>
         </section>
 
         <!-- ==================== TAB 4: PRECIFICAÇÃO MULTI-CANAL & COMBOS ==================== -->
@@ -504,51 +519,79 @@
 
   <!-- ==================== MODAL DE RECEITA ==================== -->
   <div id="recipe-modal-backdrop" class="modal-backdrop" role="dialog" aria-modal="true">
-    <div class="modal">
+    <div class="modal modal-lg">
       <div class="modal-header">
-        <h2 id="recipe-modal-title" style="font-size:1.25rem;">Editar Receita</h2>
+        <div>
+          <h2 id="recipe-modal-title" style="font-size:1.25rem;">Editar Receita</h2>
+          <p id="recipe-modal-subtitle" style="margin:2px 0 0; font-size:0.8rem; color:var(--text-muted);">Os custos e a margem atualizam ao vivo enquanto você edita.</p>
+        </div>
         <button id="btn-close-recipe-modal" class="btn btn-ghost btn-sm" type="button">✕</button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="rm-id" />
+
+        <div id="rm-live-summary" class="rm-live-summary-grid"></div>
+
         <div class="grid-2">
           <div class="field-group">
             <label for="rm-nome">Nome da Receita / Produto</label>
             <input id="rm-nome" type="text" class="input" />
           </div>
           <div class="field-group">
-            <label for="rm-tipo">Tipo</label>
+            <label for="rm-tipo">Tipo da Ficha</label>
             <select id="rm-tipo" class="select">
-              <option value="produto">Produto Final (para venda)</option>
-              <option value="subreceita">Sub-receita (massa / recheio)</option>
+              <option value="produto">🧁 Produto Final (para venda)</option>
+              <option value="subreceita">🥣 Base / Sub-receita (massa ou recheio)</option>
             </select>
           </div>
         </div>
 
-        <div class="grid-3">
+        <div class="rm-fields-4">
           <div class="field-group">
-            <label for="rm-rendimento">Rendimento Real</label>
+            <label for="rm-rendimento">Rendimento</label>
             <input id="rm-rendimento" type="text" inputmode="decimal" class="input input-num" />
           </div>
           <div class="field-group">
-            <label for="rm-unidade">Unidade do Rendimento</label>
+            <label for="rm-unidade">Unidade</label>
             <input id="rm-unidade" type="text" class="input" placeholder="un, g, porções" />
           </div>
           <div class="field-group">
-            <label for="rm-indiretos">Custos Indiretos (%)</label>
+            <label for="rm-indiretos">Gás / Luz / Perdas (%)</label>
             <input id="rm-indiretos" type="text" inputmode="decimal" class="input input-num" />
+          </div>
+          <div class="field-group">
+            <label for="rm-peso-ref">Peso / Referência</label>
+            <input id="rm-peso-ref" type="text" class="input" placeholder="ex: ~100 g / un" />
           </div>
         </div>
 
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
-          <strong style="font-size:0.9rem;">Ingredientes &amp; Sub-receitas</strong>
+        <div id="rm-product-pricing-row" class="rm-product-pricing-row">
+          <div class="field-group" style="max-width:210px;">
+            <label for="rm-preco-venda">Preço Venda Direta (R$)</label>
+            <input id="rm-preco-venda" type="text" inputmode="decimal" class="input input-num" />
+          </div>
+          <div id="rm-pricing-hint" style="font-size:0.82rem; color:var(--text-muted);"></div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:4px; padding-top:12px; border-top:1px dashed var(--border-gold);">
+          <div>
+            <strong style="font-size:0.92rem;">Ingredientes &amp; Bases</strong>
+            <div style="font-size:0.76rem; color:var(--text-muted);">Dica: no campo de quantidade você também pode digitar divisões como <code>250/16</code> que o sistema calcula sozinho.</div>
+          </div>
           <div style="display:flex; gap:8px;">
             <button id="rm-add-insumo" class="btn btn-secondary btn-sm" type="button">+ Insumo</button>
-            <button id="rm-add-sub" class="btn btn-secondary btn-sm" type="button">+ Sub-receita</button>
+            <button id="rm-add-sub" class="btn btn-secondary btn-sm" type="button">+ Base / Sub-receita</button>
           </div>
         </div>
 
         <div id="rm-items-container" style="display:flex; flex-direction:column; gap:8px;"></div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding-top:12px; border-top:1px dashed var(--border-gold);">
+          <strong style="font-size:0.92rem;">Modo de Preparo (Passo a Passo)</strong>
+          <button id="rm-add-passo" class="btn btn-secondary btn-sm" type="button">+ Passo</button>
+        </div>
+
+        <div id="rm-steps-container" style="display:flex; flex-direction:column; gap:8px;"></div>
       </div>
       <div class="modal-footer">
         <button id="btn-delete-recipe" class="btn btn-danger-ghost" type="button" style="margin-right:auto;">Excluir Receita</button>

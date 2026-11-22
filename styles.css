@@ -172,19 +172,22 @@ input:focus-visible,
 }
 
 /* ==========================================================================
-   1. ANIMAÇÃO DE INTRODUÇÃO / CARREGAMENTO (0 - 1.5s)
+   1. ANIMAÇÃO DE INTRODUÇÃO / CARREGAMENTO (0 - 2.0s)
    ========================================================================== */
 .intro-overlay {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background-color: var(--bg-page);
+  background: radial-gradient(circle at 50% 45%, var(--bg-card) 0%, var(--bg-page) 68%, var(--bg-surface-alt) 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 24px;
+  cursor: pointer;
+  overflow: hidden;
   pointer-events: all;
-  transition: opacity 0.45s var(--bounce-ease), visibility 0.45s;
+  transition: opacity 0.48s var(--bounce-ease), visibility 0.48s;
 }
 
 .intro-overlay.is-hidden {
@@ -193,23 +196,173 @@ input:focus-visible,
   pointer-events: none;
 }
 
+.intro-drip-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 115px;
+  pointer-events: none;
+  z-index: 1;
+  transform: translateY(-100%);
+  animation: dripSlideDown 0.65s var(--bounce-ease) forwards;
+}
+
+.intro-drip-top .drip-layer-caramel {
+  fill: var(--caramel);
+  opacity: 0.9;
+}
+
+.intro-drip-top .drip-layer-choco {
+  fill: var(--choc-dark);
+}
+
+[data-theme="dark"] .intro-drip-top .drip-layer-choco {
+  fill: #2A160E;
+}
+
+.intro-overlay.phase-move .intro-drip-top {
+  transform: translateY(-110%);
+  transition: transform 0.42s ease;
+}
+
+@keyframes dripSlideDown {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
 .intro-stage {
   position: relative;
-  width: 240px;
-  height: 240px;
+  width: 260px;
+  height: 260px;
   display: flex;
   align-items: center;
   justify-content: center;
   will-change: transform;
-  transition: transform 0.55s var(--bounce-ease);
+  transition: transform 0.58s var(--bounce-ease);
+  z-index: 3;
+}
+
+.intro-glow-halo {
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(229, 169, 59, 0.45) 0%, rgba(197, 140, 62, 0.14) 55%, transparent 74%);
+  transform: scale(0.5);
+  opacity: 0;
+  animation: haloPulse 1.8s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.intro-overlay.phase-fill .intro-glow-halo {
+  opacity: 1;
+  transform: scale(1.15);
+  transition: opacity 0.4s ease, transform 0.55s var(--bounce-ease);
+}
+
+.intro-overlay.phase-move .intro-glow-halo {
+  opacity: 0;
+}
+
+@keyframes haloPulse {
+  from { transform: scale(1.04); }
+  to { transform: scale(1.22); }
+}
+
+.intro-orbit-ring {
+  position: absolute;
+  inset: -16px;
+  width: calc(100% + 32px);
+  height: calc(100% + 32px);
+  color: var(--cookie-gold);
+  opacity: 0;
+  transform: scale(0.75) rotate(-35deg);
+  transition: opacity 0.45s ease, transform 0.65s var(--bounce-ease);
+  animation: orbitSpin 12s linear infinite;
+  pointer-events: none;
+}
+
+.intro-overlay.phase-fill .intro-orbit-ring {
+  opacity: 0.95;
+  transform: scale(1) rotate(0deg);
+}
+
+.intro-overlay.phase-move .intro-orbit-ring {
+  opacity: 0;
+  transform: scale(1.18);
+  transition: opacity 0.25s ease, transform 0.35s ease;
+}
+
+@keyframes orbitSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Partículas artesanais explodindo ao redor da logo */
+.intro-burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.intro-particle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  font-size: 1.4rem;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.2);
+  filter: drop-shadow(0 4px 8px rgba(60, 31, 21, 0.25));
+}
+
+.intro-particle.p1 { --tx: -125px; --ty: -95px; --rot: -24deg; }
+.intro-particle.p2 { --tx: 122px; --ty: -92px; --rot: 22deg; }
+.intro-particle.p3 { --tx: 0px; --ty: -145px; --rot: 15deg; }
+.intro-particle.p4 { --tx: -142px; --ty: 18px; --rot: -18deg; }
+.intro-particle.p5 { --tx: 144px; --ty: 16px; --rot: 20deg; }
+.intro-particle.p6 { --tx: -108px; --ty: 112px; --rot: -28deg; }
+.intro-particle.p7 { --tx: 110px; --ty: 110px; --rot: 26deg; }
+.intro-particle.p8 { --tx: 0px; --ty: 140px; --rot: -10deg; }
+
+.intro-overlay.phase-fill .intro-particle {
+  animation: particlePop 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.intro-overlay.phase-fill .intro-particle.p2 { animation-delay: 0.04s; }
+.intro-overlay.phase-fill .intro-particle.p3 { animation-delay: 0.07s; }
+.intro-overlay.phase-fill .intro-particle.p4 { animation-delay: 0.05s; }
+.intro-overlay.phase-fill .intro-particle.p5 { animation-delay: 0.09s; }
+.intro-overlay.phase-fill .intro-particle.p6 { animation-delay: 0.06s; }
+.intro-overlay.phase-fill .intro-particle.p7 { animation-delay: 0.11s; }
+.intro-overlay.phase-fill .intro-particle.p8 { animation-delay: 0.08s; }
+
+.intro-overlay.phase-move .intro-particle {
+  opacity: 0 !important;
+  transition: opacity 0.2s ease;
+}
+
+@keyframes particlePop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2) rotate(0deg);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.92;
+    transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.08) rotate(var(--rot));
+  }
 }
 
 /* SVG de traçado sketch que desenha a logo */
 .intro-sketch-svg {
   position: absolute;
-  inset: -12px;
-  width: calc(100% + 24px);
-  height: calc(100% + 24px);
+  inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: 3;
   pointer-events: none;
   transition: opacity 0.35s ease;
@@ -218,83 +371,154 @@ input:focus-visible,
 .intro-sketch-svg .sketch-path {
   fill: none;
   stroke: var(--text-primary);
-  stroke-width: 3.5;
+  stroke-width: 3.8;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-dasharray: 900;
   stroke-dashoffset: 900;
-  animation: drawSketch 0.75s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: drawSketch 0.62s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .intro-sketch-svg .sketch-path.gold {
   stroke: var(--cookie-gold);
-  stroke-width: 3;
-  animation-delay: 0.12s;
+  stroke-width: 3.2;
+  animation-delay: 0.08s;
 }
 
 .intro-sketch-svg .sketch-path.caramel {
   stroke: var(--caramel);
-  stroke-width: 2.5;
-  animation-delay: 0.22s;
+  stroke-width: 2.8;
+  animation-delay: 0.16s;
 }
 
-/* Imagem oficial da logo preenchendo após o sketch */
-.intro-logo-fill {
-  width: 210px;
-  height: 210px;
+/* Logo oficial com pop elástico e sweep de brilho */
+.intro-logo-badge {
+  position: relative;
+  width: 206px;
+  height: 206px;
   border-radius: 50%;
-  object-fit: contain;
+  overflow: hidden;
   opacity: 0;
-  transform: scale(0.84) rotate(-6deg);
-  filter: drop-shadow(0 14px 28px rgba(60, 31, 21, 0.18));
-  transition: opacity 0.38s ease, transform 0.48s var(--bounce-ease);
+  transform: scale(0.42) rotate(-14deg);
+  filter: drop-shadow(0 16px 32px rgba(60, 31, 21, 0.24));
+  transition: opacity 0.32s ease, transform 0.62s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 2;
 }
 
-[data-theme="dark"] .intro-logo-fill {
-  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.5));
+[data-theme="dark"] .intro-logo-badge {
+  filter: drop-shadow(0 16px 32px rgba(0, 0, 0, 0.6));
 }
 
-.intro-overlay.phase-fill .intro-logo-fill {
+.intro-logo-fill {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: contain;
+  display: block;
+}
+
+.intro-logo-shine {
+  position: absolute;
+  top: -20%;
+  left: -130%;
+  width: 65%;
+  height: 140%;
+  background: linear-gradient(110deg, transparent 20%, rgba(255, 253, 249, 0.58) 50%, transparent 80%);
+  transform: skewX(-22deg);
+  pointer-events: none;
+}
+
+.intro-overlay.phase-fill .intro-logo-badge {
   opacity: 1;
   transform: scale(1) rotate(0deg);
 }
 
+.intro-overlay.phase-fill .intro-logo-shine {
+  animation: logoShineSweep 0.72s 0.16s ease-out forwards;
+}
+
 .intro-overlay.phase-fill .intro-sketch-svg {
-  opacity: 0.15;
+  opacity: 0.12;
+}
+
+@keyframes logoShineSweep {
+  from { left: -130%; }
+  to { left: 165%; }
+}
+
+.intro-meta {
+  margin-top: 22px;
+  text-align: center;
+  max-width: 340px;
+  width: 100%;
+  z-index: 3;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.intro-brand-title {
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  opacity: 0;
+  transform: translateY(12px);
+  animation: fadeUpQuick 0.42s 0.14s var(--bounce-ease) forwards;
 }
 
 .intro-caption {
-  margin-top: 22px;
-  font-family: var(--font-heading);
-  font-size: 1.1rem;
+  margin-top: 4px;
+  font-family: var(--font-body);
+  font-size: 0.94rem;
   font-weight: 700;
-  color: var(--text-primary);
-  letter-spacing: 0.04em;
+  color: var(--text-secondary);
   opacity: 0;
   transform: translateY(10px);
-  animation: fadeUpQuick 0.4s 0.2s var(--bounce-ease) forwards;
+  animation: fadeUpQuick 0.42s 0.24s var(--bounce-ease) forwards;
 }
 
-.intro-overlay.phase-move .intro-caption {
+.intro-progress-track {
+  margin: 14px auto 0;
+  width: 180px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(197, 140, 62, 0.22);
+  border: 1px solid rgba(60, 31, 21, 0.16);
+  overflow: hidden;
+}
+
+[data-theme="dark"] .intro-progress-track {
+  border-color: var(--border-primary);
+}
+
+.intro-progress-fill {
+  width: 0%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--cookie-gold), var(--caramel));
+  animation: introProgressRun 1.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.intro-overlay.phase-move .intro-meta {
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transform: translateY(8px);
 }
 
 @keyframes drawSketch {
-  0% {
-    stroke-dashoffset: 900;
-  }
-  100% {
-    stroke-dashoffset: 0;
-  }
+  0% { stroke-dashoffset: 900; }
+  100% { stroke-dashoffset: 0; }
 }
 
 @keyframes fadeUpQuick {
   to {
-    opacity: 0.85;
+    opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes introProgressRun {
+  0% { width: 0%; }
+  100% { width: 100%; }
 }
 
 /* ==========================================================================
@@ -992,6 +1216,8 @@ body.intro-complete .hero-entrance-item.delay-4 {
   position: relative;
   width: 96px;
   height: 96px;
+  flex-shrink: 0;
+  aspect-ratio: 1 / 1;
   border-radius: 50%;
   background: var(--btn-dark-bg);
   border: 3px solid var(--border-primary);
@@ -1464,7 +1690,7 @@ body.intro-complete .hero-entrance-item.delay-4 {
 /* Grid de Produtos do Cardápio */
 .menu-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
   gap: 28px;
 }
 
@@ -1495,6 +1721,7 @@ body.intro-complete .hero-entrance-item.delay-4 {
   position: absolute;
   top: 18px;
   right: 18px;
+  z-index: 3;
   background: var(--caramel);
   color: var(--text-on-accent);
   border: 2px solid var(--border-primary);
@@ -1502,16 +1729,20 @@ body.intro-complete .hero-entrance-item.delay-4 {
   padding: 4px 12px;
   font-size: 0.75rem;
   font-weight: 800;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
 }
 
 .product-illustration {
-  height: 150px;
+  height: 210px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 18px;
   background: radial-gradient(circle, rgba(229, 169, 59, 0.22) 0%, transparent 70%);
+  border: 2.5px solid var(--border-primary);
   border-radius: 18px;
+  overflow: hidden;
+  position: relative;
 }
 
 [data-theme="dark"] .product-illustration {
@@ -1526,6 +1757,18 @@ body.intro-complete .hero-entrance-item.delay-4 {
 
 .product-card:hover .product-illustration svg {
   transform: scale(1.1) rotate(4deg);
+}
+
+.product-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.45s var(--bounce-ease);
+}
+
+.product-card:hover .product-photo {
+  transform: scale(1.07);
 }
 
 .product-title {
@@ -1793,15 +2036,28 @@ body.intro-complete .hero-entrance-item.delay-4 {
    ========================================================================== */
 @media (max-width: 1040px) {
   .navbar {
-    padding: 18px 24px 10px;
+    padding: 18px 20px 12px;
     flex-wrap: wrap;
+    gap: 14px;
+  }
+  .navbar > nav {
+    width: 100%;
+    order: 3;
+  }
+  .nav-links {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 18px 24px;
   }
   .hero-body {
-    grid-template-columns: 1fr;
-    padding: 20px 28px 180px;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 18px 24px 160px;
     text-align: center;
   }
   .hero-copy {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
@@ -1810,21 +2066,28 @@ body.intro-complete .hero-entrance-item.delay-4 {
   .hero-cta-row,
   .hero-badges-row {
     justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
   }
   .badges-caption {
-    text-align: left;
+    text-align: center;
+    max-width: 280px;
   }
   .hero-visual-stage {
-    height: 410px;
-    max-width: 540px;
+    height: 380px;
+    max-width: 100%;
     margin: 0 auto;
   }
   .packaging-showcase {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .delivery-banner {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     text-align: center;
+    padding: 36px 24px;
+  }
+  .delivery-cta-group {
+    justify-content: center;
   }
   .bairros-list {
     justify-content: center;
@@ -1833,32 +2096,180 @@ body.intro-complete .hero-entrance-item.delay-4 {
 
 @media (max-width: 640px) {
   .page-shell {
-    padding: 10px 12px 0;
+    padding: 8px 10px 0;
   }
-  .nav-actions {
-    flex-wrap: wrap;
+  .hero-frame {
+    border-radius: 24px;
+    min-height: auto;
+  }
+  .navbar {
+    padding: 14px 14px 10px;
+    gap: 12px;
     justify-content: center;
   }
-  .nav-links {
-    gap: 16px;
-    font-size: 0.9rem;
+  .brand-link {
     width: 100%;
     justify-content: center;
-    order: 3;
+    gap: 10px;
+  }
+  .nav-logo-wrap {
+    width: 56px;
+    height: 56px;
+  }
+  .brand-name {
+    font-size: 1.1rem;
+  }
+  .brand-city {
+    font-size: 0.7rem;
+  }
+  .nav-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-replay-intro {
+    font-size: 0.76rem;
+    padding: 7px 11px;
+  }
+  .btn-contact-pill {
+    font-size: 0.88rem;
+    padding: 9px 20px;
+  }
+  .nav-links {
+    gap: 10px 16px;
+    font-size: 0.88rem;
+    width: 100%;
+    justify-content: center;
+  }
+  .nav-link {
+    font-size: 0.9rem;
+    padding: 4px 2px 8px;
+  }
+  .hero-body {
+    padding: 12px 16px 130px;
+    gap: 18px;
+  }
+  .hero-tag {
+    font-size: 0.74rem;
+    padding: 6px 12px;
+    max-width: 100%;
+    text-align: center;
+    line-height: 1.35;
   }
   .hero-headline {
-    font-size: 2.35rem;
+    font-size: clamp(1.85rem, 8vw, 2.3rem);
+    line-height: 1.12;
+    word-break: break-word;
   }
-  .hero-main-logo-wrap {
+  .hero-subtitle {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    max-width: 100%;
+  }
+  .hero-cta-row {
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  .btn-order-now {
+    width: 100%;
+    max-width: 320px;
+    justify-content: center;
+    font-size: 1rem;
+    padding: 14px 24px;
+  }
+  .hero-quick-tools {
+    width: 100%;
+    max-width: 320px;
+    justify-content: center;
+  }
+  .search-pill {
+    flex: 1;
+    min-width: 0;
+  }
+  .search-pill input {
+    width: 100%;
+    min-width: 0;
+    padding: 0 12px;
+    font-size: 0.86rem;
+  }
+  .cart-pill-btn {
+    flex-shrink: 0;
+    padding: 0 14px;
+  }
+  .hero-badges-row {
+    gap: 14px;
+  }
+  .stamp-badge {
+    width: 80px;
+    height: 80px;
+    flex-shrink: 0;
+  }
+  .badges-caption {
+    width: 100%;
+    max-width: 260px;
+    text-align: center;
+  }
+  .hero-visual-stage {
+    height: 300px;
+    max-width: 320px;
+  }
+  .hero-emblem-backdrop {
     width: 230px;
     height: 230px;
   }
+  .hero-main-logo-wrap {
+    width: 185px;
+    height: 185px;
+  }
   .floating-cookie-left {
-    width: 98px;
-    height: 98px;
+    width: 78px;
+    height: 78px;
+    left: 0;
+    bottom: 24px;
+  }
+  .floating-cookie-bottom {
+    width: 76px;
+    height: 76px;
+    left: 34%;
+    bottom: -32px;
   }
   .floating-truffle-cone {
-    width: 122px;
-    height: 175px;
+    width: 96px;
+    height: 138px;
+    right: 0;
+    bottom: -10px;
+  }
+  .floating-choc-cube {
+    width: 62px;
+    height: 62px;
+    right: 4%;
+    top: 6px;
+  }
+  .section-block {
+    padding: 48px 14px;
+  }
+  .delivery-banner {
+    padding: 26px 16px;
+    border-radius: 24px;
+    gap: 22px;
+  }
+  .delivery-cta-group {
+    flex-direction: column;
+    width: 100%;
+  }
+  .delivery-cta-group .btn-order-now,
+  .delivery-cta-group .btn-ifood-outline {
+    width: 100%;
+    max-width: 100%;
+    justify-content: center;
+    font-size: 0.9rem;
+    padding: 13px 16px;
+  }
+  .delivery-brand-logo {
+    width: 150px;
+    height: 150px;
   }
 }

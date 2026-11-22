@@ -19,9 +19,9 @@ const DEFAULT_INGREDIENTS = [
   { id: 'mel', nome: 'Mel puro', categoria: 'Açúcares & Mel', preco: 38.00, quantidade: 500, unidade: 'g', obs: 'Pote 500 g (Sulmel/Pró-Apis - Fort/SC)' },
   { id: 'choc-po-50', nome: 'Chocolate em pó 50%', categoria: 'Chocolates & Cacau', preco: 36.00, quantidade: 500, unidade: 'g', obs: 'Pct 500 g (Sicao/Melken/Mavalério)' },
   { id: 'cacau-100', nome: 'Cacau em pó 100%', categoria: 'Chocolates & Cacau', preco: 45.00, quantidade: 200, unidade: 'g', obs: 'Pct 200 g (Garoto/Melken - Fort/SC)' },
-  { id: 'choc-nobre', nome: 'Chocolate nobre barra / gotas', categoria: 'Chocolates & Cacau', preco: 55.00, quantidade: 500, unidade: 'g', obs: 'Barra 500 g (Harald Melken/Sicao)' },
+  { id: 'choc-nobre', nome: 'Chocolate nobre Divine / barra', categoria: 'Chocolates & Cacau', preco: 55.00, quantidade: 500, unidade: 'g', obs: 'Barra 500 g (Divine / Harald Melken)' },
   { id: 'cobertura-frac', nome: 'Cobertura fracionada', categoria: 'Chocolates & Cacau', preco: 45.00, quantidade: 1000, unidade: 'g', obs: 'Barra 1 kg (Harald Top/Mavalério - Fort/SC)' },
-  { id: 'doce-leite', nome: 'Doce de leite pastoso', categoria: 'Laticínios', preco: 38.00, quantidade: 1000, unidade: 'g', obs: '1 kg (Itambé/Frimesa/Tirol - SC)' },
+  { id: 'leite-moca-lata', nome: 'Leite Moça Lata (p/ Doce de Leite)', categoria: 'Laticínios', preco: 12.50, quantidade: 395, unidade: 'g', obs: 'Lata 395 g integral (Fort/Bistek/Giassi SC)' },
   { id: 'farinha', nome: 'Farinha de trigo', categoria: 'Secos & Farinhas', preco: 6.00, quantidade: 1000, unidade: 'g', obs: 'Pct 1 kg (Dona Benta/Orquídea - Fort/SC)' },
   { id: 'acucar-refinado', nome: 'Açúcar refinado', categoria: 'Açúcares & Mel', preco: 4.50, quantidade: 1000, unidade: 'g', obs: 'Pct 1 kg (União/Caravelas - Fort/SC)' },
   { id: 'acucar-mascavo', nome: 'Açúcar mascavo', categoria: 'Açúcares & Mel', preco: 12.00, quantidade: 500, unidade: 'g', obs: 'Pct 500 g (DaColônia/Jasmine - SC)' },
@@ -29,7 +29,6 @@ const DEFAULT_INGREDIENTS = [
   { id: 'margarina', nome: 'Margarina', categoria: 'Gorduras & Ovos', preco: 11.00, quantidade: 500, unidade: 'g', obs: 'Pote 500 g 80% lip. (Qualy - Fort/SC)' },
   { id: 'ovos', nome: 'Ovos', categoria: 'Gorduras & Ovos', preco: 16.00, quantidade: 20, unidade: 'un', obs: 'Bandeja 20 un (Mantiqueira/Lembeck - Fort/SC)' },
   { id: 'amido', nome: 'Amido de milho', categoria: 'Secos & Farinhas', preco: 7.00, quantidade: 200, unidade: 'g', obs: 'Cx 200 g (Maizena - Fort/SC)' },
-  { id: 'bolacha-maria', nome: 'Bolacha Maria/Maisena', categoria: 'Biscoitos & Casquinhas', preco: 8.50, quantidade: 45, unidade: 'un', obs: 'Pct 350 g ~45 un (Isabela/Marilan - SC)' },
   { id: 'casquinha', nome: 'Casquinha de sorvete', categoria: 'Biscoitos & Casquinhas', preco: 11.50, quantidade: 10, unidade: 'un', obs: 'Prop. 10 un (Marvi Doce/Wafer)' },
   { id: 'cafe-soluvel', nome: 'Café solúvel', categoria: 'Especiarias & Fermentos', preco: 30.00, quantidade: 100, unidade: 'g', obs: 'Vidro/Refil 100 g (Nescafé/3 Corações - SC)' },
   { id: 'canela', nome: 'Canela em pó', categoria: 'Especiarias & Fermentos', preco: 10.50, quantidade: 50, unidade: 'g', obs: 'Pct 50 g (Kitano/Quero - Fort/SC)' },
@@ -65,6 +64,13 @@ const DEFAULT_RECIPES = [
       { tipo: 'insumo', refId: 'acucar-refinado', quantidade: 180 },
       { tipo: 'insumo', refId: 'fermento', quantidade: 4 },
     ],
+    passos: [
+      'Aquecer os 480 ml de leite com os 200 g de mel, 1,5 g de cravo, 8 g de canela e 2 g de noz-moscada até amornar e dissolver o mel.',
+      'Peneirar em um bowl a farinha de trigo (360 g), o açúcar refinado (180 g), o chocolate em pó 50% (100 g), o bicarbonato (8 g) e o fermento (4 g).',
+      'Despejar o leite morno aromatizado aos poucos sobre os secos, misturando com fouet até obter massa lisa e sem grumos (não bater em excesso).',
+      'Despejar em assadeira untada/forrada e assar em forno preaquecido a 180 °C por cerca de 25 a 30 min (fazer o teste do palito).',
+      'Deixar esfriar completamente antes de desenformar e cortar em 16 porções iguais.',
+    ],
   },
   {
     id: 'sub-brigadeiro-cafe',
@@ -79,6 +85,58 @@ const DEFAULT_RECIPES = [
       { tipo: 'insumo', refId: 'creme-de-leite', quantidade: 200 },
       { tipo: 'insumo', refId: 'margarina', quantidade: 5 },
       { tipo: 'insumo', refId: 'cafe-soluvel', quantidade: 4 },
+    ],
+    passos: [
+      'Dissolver os 4 g de café solúvel em 1 colher (sopa) do próprio creme de leite (ou poucas gotas de água morna) para não empelotar.',
+      'Em panela de fundo grosso, misturar o leite condensado (790 g), o creme de leite (200 g), a margarina (5 g) e o café dissolvido.',
+      'Cozinhar em fogo médio-baixo mexendo continuamente (raspando laterais e fundo) por 10 a 15 min até cair em blocos firmes da espátula (ponto de recheio cremoso).',
+      'Transferir para um recipiente, cobrir com plástico filme em contato e aguardar esfriar totalmente antes de rechear.',
+    ],
+  },
+  {
+    id: 'sub-doce-de-leite',
+    nome: 'Recheio de Doce de Leite (Leite Moça + Creme de Leite)',
+    tipo: 'subreceita',
+    rendimento: 495,
+    unidadeRendimento: 'g',
+    pesoReferencia: '1 lata cozida + 1/2 cx creme (~495 g)',
+    custosIndiretosPct: 20,
+    itens: [
+      { tipo: 'insumo', refId: 'leite-moca-lata', quantidade: 395 },
+      { tipo: 'insumo', refId: 'creme-de-leite', quantidade: 100 },
+    ],
+    passos: [
+      'Retirar o rótulo de papel e toda a cola da lata fechada de Leite Moça (395 g).',
+      'Acomodar a lata na panela de pressão e cobrir totalmente com água (pelo menos 2 dedos acima da lata).',
+      'Tampar e, após pegar pressão, cozinhar em fogo baixo por 35 a 40 min para ponto cremoso firme.',
+      'Desligar o fogo e deixar a pressão sair naturalmente. Só abrir a lata quando estiver 100% fria para evitar risco de queimadura.',
+      'Transferir o doce de leite cozido para um bowl e misturar meia caixa de creme de leite (100 g) com fouet ou espátula até ficar liso, brilhante e cremoso (~495 g).',
+    ],
+  },
+  {
+    id: 'sub-massa-alfajor',
+    nome: 'Massa de Alfajor Artesanal (30 discos)',
+    tipo: 'subreceita',
+    rendimento: 15,
+    unidadeRendimento: 'porções',
+    pesoReferencia: '15 pares / 30 discos (~520 g)',
+    custosIndiretosPct: 15,
+    itens: [
+      { tipo: 'insumo', refId: 'farinha', quantidade: 200 },
+      { tipo: 'insumo', refId: 'amido', quantidade: 100 },
+      { tipo: 'insumo', refId: 'manteiga', quantidade: 120 },
+      { tipo: 'insumo', refId: 'acucar-refinado', quantidade: 100 },
+      { tipo: 'insumo', refId: 'ovos', quantidade: 2 },
+      { tipo: 'insumo', refId: 'mel', quantidade: 20 },
+      { tipo: 'insumo', refId: 'fermento', quantidade: 5 },
+      { tipo: 'insumo', refId: 'baunilha', quantidade: 5 },
+    ],
+    passos: [
+      'Bater a manteiga sem sal em ponto pomada (120 g) com o açúcar refinado (100 g), o mel (20 g) e a essência de baunilha (5 ml) até obter creme claro.',
+      'Adicionar os 2 ovos aos poucos e misturar até incorporar bem.',
+      'Juntar a farinha de trigo (200 g), o amido de milho (100 g) e o fermento (5 g) peneirados, misturando com as pontas dos dedos até formar massa lisa sem sovar.',
+      'Envolver em plástico filme e descansar na geladeira por 30 min.',
+      'Abrir com rolo (~4 mm de espessura), cortar 30 discos (~5 cm) e assar a 180 °C por 10 a 12 min (devem permanecer claros, sem dourar demais). Esfriar na assadeira.',
     ],
   },
 
@@ -96,8 +154,35 @@ const DEFAULT_RECIPES = [
     itens: [
       { tipo: 'subreceita', refId: 'sub-massa-pao-mel', quantidade: 1 },
       { tipo: 'subreceita', refId: 'sub-brigadeiro-cafe', quantidade: 25 },
-      { tipo: 'insumo', refId: 'doce-leite', quantidade: 20 },
+      { tipo: 'subreceita', refId: 'sub-doce-de-leite', quantidade: 20 },
       { tipo: 'insumo', refId: 'emb-individual', quantidade: 1 },
+    ],
+    passos: [
+      'Cortar 1 porção (1/16) da Massa Pão de Mel fria ao meio no sentido horizontal.',
+      'Rechear uniformemente com 25 g de Brigadeiro de Café e 20 g de Doce de Leite Caseiro (ou em duas camadas).',
+      'Fechar, alinhar as bordas com espátula e embalar na embalagem individual com o adesivo da Ana\'s Bakery.',
+    ],
+  },
+  {
+    id: 'prod-pao-mel-casquinha-sem-recheio',
+    nome: 'Pão de Mel s/ Recheio c/ Casquinha Divine',
+    tipo: 'produto',
+    rendimento: 1,
+    unidadeRendimento: 'un',
+    pesoReferencia: '~100 g / un',
+    custosIndiretosPct: 0,
+    precoVendaDireta: 10.00,
+    fornadasPlanejadas: 0,
+    itens: [
+      { tipo: 'subreceita', refId: 'sub-massa-pao-mel', quantidade: 1 },
+      { tipo: 'insumo', refId: 'choc-nobre', quantidade: 15.625 },
+      { tipo: 'insumo', refId: 'emb-individual', quantidade: 1 },
+    ],
+    passos: [
+      'Cortar 1 porção (1/16) da Massa Pão de Mel já fria (~84 g), mantendo-a inteira (sem cortar ao meio e sem rechear).',
+      'Picar e derreter o Chocolate Nobre Divine (250 g para a fornada de 16 unidades, ~15,6 g por unidade) de 30 em 30 s no micro-ondas ou banho-maria, fazendo a temperagem (28–29 °C) para garantir casquinha crocante e brilhante.',
+      'Banhar o pão de mel no chocolate temperado com garfo de confeitaria, escorrer o excesso dando leves batidinhas e apoiar sobre papel manteiga.',
+      'Levar à geladeira por 5 a 10 min apenas até a casquinha cristalizar e soltar do papel; embalar individualmente com o adesivo da Ana\'s Bakery.',
     ],
   },
   {
@@ -113,8 +198,13 @@ const DEFAULT_RECIPES = [
     itens: [
       { tipo: 'subreceita', refId: 'sub-massa-pao-mel', quantidade: 8 },
       { tipo: 'subreceita', refId: 'sub-brigadeiro-cafe', quantidade: 200 },
-      { tipo: 'insumo', refId: 'doce-leite', quantidade: 160 },
+      { tipo: 'subreceita', refId: 'sub-doce-de-leite', quantidade: 160 },
       { tipo: 'insumo', refId: 'emb-familia', quantidade: 1 },
+    ],
+    passos: [
+      'Separar meia assadeira (8/16 da Massa Pão de Mel fria) e cortar ao meio na horizontal com faca de serra longa ou nivelador.',
+      'Espalhar de forma uniforme 200 g de Brigadeiro de Café e 160 g de Doce de Leite Caseiro sobre a base.',
+      'Posicionar a tampa da massa, nivelar as laterais e acomodar com cuidado na caixa tamanho família/gigante.',
     ],
   },
   {
@@ -135,6 +225,12 @@ const DEFAULT_RECIPES = [
       { tipo: 'insumo', refId: 'granulado-gourmet', quantidade: 80 },
       { tipo: 'insumo', refId: 'emb-individual', quantidade: 20 },
     ],
+    passos: [
+      'Em panela de fundo grosso, dissolver o cacau 100% peneirado (25 g) no leite condensado (395 g) antes de ligar o fogo; depois juntar o creme de leite (100 g) e a manteiga (15 g).',
+      'Cozinhar em fogo médio-baixo mexendo sem parar até atingir ponto de enrolar (a massa solta totalmente do fundo ao inclinar a panela).',
+      'Transferir para prato coberto com plástico filme em contato e descansar por no mínimo 4 horas (ou geladeira) até firmar.',
+      'Pesar 20 porções (~20 g cada), bolear, passar nos 80 g de granulado gourmet e acomodar nas embalagens individuais.',
+    ],
   },
   {
     id: 'prod-alfajor',
@@ -147,10 +243,16 @@ const DEFAULT_RECIPES = [
     precoVendaDireta: 8.50,
     fornadasPlanejadas: 2,
     itens: [
-      { tipo: 'insumo', refId: 'bolacha-maria', quantidade: 30 },
-      { tipo: 'insumo', refId: 'doce-leite', quantidade: 400 },
+      { tipo: 'subreceita', refId: 'sub-massa-alfajor', quantidade: 15 },
+      { tipo: 'subreceita', refId: 'sub-doce-de-leite', quantidade: 400 },
       { tipo: 'insumo', refId: 'cobertura-frac', quantidade: 350 },
       { tipo: 'insumo', refId: 'emb-individual', quantidade: 15 },
+    ],
+    passos: [
+      'Separar os 30 discos frios da Massa de Alfajor em 15 pares.',
+      'Rechear cada par com ~26 g de Doce de Leite Caseiro (total 400 g nos 15 un) usando saco de confeitar e pressionar levemente para nivelar a borda.',
+      'Derreter a cobertura fracionada (350 g) no micro-ondas em intervalos de 30 s (ou banho-maria) sem superaquecer.',
+      'Banhar cada alfajor com garfo de confeitaria, escorrer o excesso sobre papel manteiga e gelar por ~10 min até secar. Embalar individualmente.',
     ],
   },
   {
@@ -170,6 +272,11 @@ const DEFAULT_RECIPES = [
       { tipo: 'insumo', refId: 'creme-de-leite', quantidade: 200 },
       { tipo: 'insumo', refId: 'choc-nobre', quantidade: 80 },
       { tipo: 'insumo', refId: 'emb-individual', quantidade: 10 },
+    ],
+    passos: [
+      'Derreter os 250 g de cobertura fracionada e banhar o interior e a borda das 10 casquinhas para impermeabilizar (mantém a crocância); deixar secar.',
+      'Preparar o recheio trufado cozinhando o leite condensado (395 g), o creme de leite (200 g) e o chocolate nobre (80 g) até ponto cremoso firme; deixar esfriar totalmente.',
+      'Rechear os 10 cones com saco de confeitar, fechar o topo/base com cobertura fracionada, aguardar cristalizar e embalar individualmente.',
     ],
   },
   {
@@ -193,6 +300,12 @@ const DEFAULT_RECIPES = [
       { tipo: 'insumo', refId: 'baunilha', quantidade: 5 },
       { tipo: 'insumo', refId: 'emb-individual', quantidade: 10 },
     ],
+    passos: [
+      'Misturar a manteiga sem sal (150 g) com o açúcar mascavo (150 g) e o açúcar refinado (80 g) até ficar homogêneo; acrescentar o ovo e a baunilha (5 ml).',
+      'Incorporar a farinha de trigo (280 g) e o fermento (5 g) rapidamente (sem desenvolver glúten) e dobrar os 250 g de chocolate nobre em gotas/picado.',
+      'Porcionar 10 bolas altas rústicas (~90 g cada) e gelar ou congelar por no mínimo 30 a 60 min antes de assar.',
+      'Assar em assadeira com espaço entre os cookies a 190–200 °C por 11 a 13 min (bordas douradas e centro ainda macio). Descansar 10 min na forma antes de embalar.',
+    ],
   },
   {
     id: 'prod-brownie-fudgy',
@@ -212,6 +325,12 @@ const DEFAULT_RECIPES = [
       { tipo: 'insumo', refId: 'farinha', quantidade: 100 },
       { tipo: 'insumo', refId: 'cacau-100', quantidade: 30 },
       { tipo: 'insumo', refId: 'emb-individual', quantidade: 12 },
+    ],
+    passos: [
+      'Derreter juntos os 250 g de chocolate nobre e os 150 g de manteiga sem sal (banho-maria ou micro-ondas de 30 em 30 s) e reservar para amornar.',
+      'Bater os 3 ovos com os 200 g de açúcar refinado por ~3 min até clarear e espumar (essencial para formar a casquinha craquelada).',
+      'Incorporar o chocolate derretido e, em seguida, peneirar a farinha (100 g) e o cacau 100% (30 g), mexendo delicadamente com espátula.',
+      'Assar em forma quadrada forrada (20x20 cm) a 180 °C por 22 a 26 min (palito sai levemente úmido com migalhas). Esfriar totalmente antes de cortar em 12 pedaços e embalar.',
     ],
   },
 ];
@@ -575,17 +694,17 @@ function calculateShoppingListAndProjection(state, mix) {
 const DEFAULT_INTERNAL_ORDERS = [
   {
     id: 'ped-pao-mel-gigante-1',
-    cliente: 'Cliente Presencial — Pedido #01',
+    cliente: '1ª Venda Oficial — Pão de Mel Gigante',
     contato: 'Presencial',
-    dataEntrega: '',
-    status: 'orcamento',
+    dataEntrega: '2026-11-16',
+    status: 'confirmado',
     itens: [
       { recipeId: 'prod-pao-mel-gigante', quantidade: 1 },
     ],
     custoExtra: 0,
-    precoCobrado: null,
-    sinalPago: 0,
-    observacoes: 'Encomenda presencial de Pão de Mel Gigante (~8 porções). Sem taxa de aplicativo.',
+    precoCobrado: 55.00,
+    sinalPago: 55.00,
+    observacoes: 'Primeira venda oficial da Ana\'s Bakery! Pão de Mel Gigante vendido por R$ 55,00 (Lucro líquido real: R$ 18,22 / 33,1% de margem).',
   },
 ];
 
