@@ -529,6 +529,7 @@ function calculateChannelPricing(custoUnitario, precoDireto, config) {
 
   const lucroDireto = precoDireto - custoUnitario;
   const margemDiretaPct = precoDireto > 0 ? (lucroDireto / precoDireto) * 100 : 0;
+  const roiUnitarioPct = custoUnitario > 0 ? (lucroDireto / custoUnitario) * 100 : 0;
 
   // Preço no iFood para receber exatamente o mesmo líquido da venda direta:
   // precoIfood * (1 - taxa) = precoDireto  =>  precoIfood = precoDireto / (1 - taxa)
@@ -559,6 +560,7 @@ function calculateChannelPricing(custoUnitario, precoDireto, config) {
     precoDireto,
     lucroDireto,
     margemDiretaPct,
+    roiUnitarioPct,
     precoMinimoRecomendado,
     status,
     ifoodBasico: {
@@ -703,6 +705,37 @@ function calculateShoppingListAndProjection(state, mix) {
   // Margem de contribuição média ponderada por unidade vendida no mix atual
   const lucroMedioPorUnidade = totalUnidadesProduzidas > 0 ? lucroLiquidoMix / totalUnidadesProduzidas : 0;
 
+  // ROIs (Retorno sobre Investimento) & Payback
+  const roiCicloComprasPct = investimentoCompraFechada > 0
+    ? (lucroLiquidoMix / investimentoCompraFechada) * 100
+    : 0;
+  const roiProducaoPct = custoProducaoTotal > 0
+    ? (lucroLiquidoMix / custoProducaoTotal) * 100
+    : 0;
+  const roiInvestimentoTotalCicloPct = investimentoTotalInicial > 0
+    ? (lucroLiquidoMix / investimentoTotalInicial) * 100
+    : 0;
+  const ciclosPorAno = state.periodo === 'Mensal' ? 12 : 52;
+  const roiAnualizadoPct = roiInvestimentoTotalCicloPct * ciclosPorAno;
+  const paybackCiclos = lucroLiquidoMix > 0 ? investimentoTotalInicial / lucroLiquidoMix : Infinity;
+  const paybackAComprarCiclos = lucroLiquidoMix > 0 ? totalAComprarGeral / lucroLiquidoMix : Infinity;
+
+  // Retorno Real já obtido via Pedidos Internos confirmados / em produção / entregues
+  const pedidosAtivos = Array.isArray(state.internalOrders)
+    ? state.internalOrders.filter((o) => o && o.status !== 'cancelado' && o.status !== 'orcamento')
+    : [];
+  let faturamentoRealPedidos = 0;
+  let lucroRealPedidos = 0;
+  for (const ped of pedidosAtivos) {
+    const cPed = calculateInternalOrder(ped, state);
+    faturamentoRealPedidos += cPed.precoFinal;
+    lucroRealPedidos += cPed.lucroLiquido;
+  }
+  const roiRealJaInvestidoPct = totalJaInvestido > 0
+    ? (lucroRealPedidos / totalJaInvestido) * 100
+    : 0;
+  const cestaBaseTotal = (state.ingredients || []).reduce((acc, i) => acc + Number(i.preco || 0), 0);
+
   return {
     shoppingList,
     investimentoCompraFechada,
@@ -721,6 +754,16 @@ function calculateShoppingListAndProjection(state, mix) {
     totalEquipamentos,
     investimentoTotalInicial,
     lucroMedioPorUnidade,
+    roiCicloComprasPct,
+    roiProducaoPct,
+    roiInvestimentoTotalCicloPct,
+    roiAnualizadoPct,
+    paybackCiclos,
+    paybackAComprarCiclos,
+    faturamentoRealPedidos,
+    lucroRealPedidos,
+    roiRealJaInvestidoPct,
+    cestaBaseTotal,
     productSummaries,
   };
 }

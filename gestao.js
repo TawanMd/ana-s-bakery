@@ -336,6 +336,10 @@
       title: 'Pedidos Internos (Presenciais)',
       subtitle: 'Orçamentos e encomendas diretas sem taxa de app, com preço garantido para gerar lucro',
     },
+    ia: {
+      title: 'Central IA — Ana\'s Copilot',
+      subtitle: 'Pesquisa diária de preços em SC, atualização automática de ROIs, consultor CFO, leitor de nota fiscal e laboratório criativo',
+    },
   };
 
   function switchTab(tabId) {
@@ -359,6 +363,7 @@
     else if (activeTab === 'precificacao') renderPrecificacao();
     else if (activeTab === 'investimento') renderInvestimento();
     else if (activeTab === 'pedidos') renderPedidosInternos();
+    else if (activeTab === 'ia' && window.AnasAI) window.AnasAI.renderAITab();
   }
 
   // ======================== NORMALIZAÇÃO DO MIX ========================
@@ -385,6 +390,11 @@
       ? produtos.reduce((acc, p) => acc + p.pricing.margemDiretaPct, 0) / produtos.length
       : 0;
 
+    const roiCiclo = Number(proj.roiCicloComprasPct || 0);
+    const paybackStr = Number.isFinite(proj.paybackCiclos)
+      ? `Payback: ~${formatNum(proj.paybackCiclos, 1)} ciclos`
+      : 'Ajuste preços p/ calcular payback';
+
     document.getElementById('dashboard-kpis').innerHTML = `
       <div class="kpi-card">
         <span class="kpi-label">Faturamento Projetado (${escapeHtml(state.periodo)})</span>
@@ -397,6 +407,11 @@
         <span class="kpi-sub">Já descontando insumos, gás/luz e taxas iFood</span>
       </div>
       <div class="kpi-card">
+        <span class="kpi-label">ROI do Ciclo (Insumos)</span>
+        <span class="kpi-value ${roiCiclo >= 50 ? 'olive' : (roiCiclo > 0 ? 'gold' : 'terracotta')}">${formatNum(roiCiclo, 1)}%</span>
+        <span class="kpi-sub">${paybackStr}</span>
+      </div>
+      <div class="kpi-card">
         <span class="kpi-label">Margem Média (Venda Direta)</span>
         <span class="kpi-value ${margemMedia >= state.config.margemMinima ? 'olive' : 'terracotta'}">${formatNum(margemMedia, 1)}%</span>
         <span class="kpi-sub">Meta mínima: ${formatNum(state.config.margemMinima, 1)}%</span>
@@ -407,6 +422,10 @@
         <span class="kpi-sub">${lowMarginCount === 0 ? 'Todos os doces saudáveis' : 'Produtos abaixo da meta mínima'}</span>
       </div>
     `;
+
+    if (window.AnasAI && typeof window.AnasAI.renderDashboardBriefing === 'function') {
+      window.AnasAI.renderDashboardBriefing();
+    }
 
     // Barras de margem
     const barsHtml = produtos.map((p) => {
@@ -442,6 +461,7 @@
           <td class="td-right"><strong>${formatBRL(p.pricing.precoDireto)}</strong></td>
           <td class="td-right">${formatBRL(p.pricing.lucroDireto)}</td>
           <td class="td-right"><span class="badge ${badgeClass}">${formatNum(p.pricing.margemDiretaPct, 1)}%</span></td>
+          <td class="td-right"><strong style="color:${p.pricing.roiUnitarioPct >= 100 ? 'var(--olive)' : 'var(--gold-dark)'};">${formatNum(p.pricing.roiUnitarioPct || 0, 0)}%</strong></td>
           <td class="td-right">${formatBRL(p.pricing.ifoodBasico.preco)}</td>
           <td class="td-right">${formatBRL(p.pricing.ifoodEntrega.preco)}</td>
         </tr>
@@ -510,10 +530,28 @@
     const tbody = document.getElementById('insumos-tbody');
     tbody.innerHTML = filtered.map((ing) => {
       const unitCost = getIngredientUnitCost(ing);
+      const meta = ing.aiMeta;
+      let aiSubHtml = '';
+      if (meta && meta.lastStore) {
+        const deltaNum = Number(meta.deltaPct || 0);
+        const deltaCls = deltaNum > 0.5 ? 'terracotta' : (deltaNum < -0.5 ? 'olive' : 'gold');
+        const deltaTxt = Math.abs(deltaNum) >= 0.5 ? `${deltaNum > 0 ? '+' : ''}${formatNum(deltaNum, 1)}%` : 'estável';
+        const linkHtml = meta.productUrl
+          ? `<a href="${escapeHtml(meta.productUrl)}" target="_blank" rel="noopener noreferrer" class="ai-ing-link" title="${escapeHtml(meta.matchedProduct || '')}">↗</a>`
+          : '';
+        aiSubHtml = `
+          <div class="ai-ing-meta">
+            <span class="ai-ing-store">✨ ${escapeHtml(meta.lastStore)}</span>
+            <span class="ai-ing-delta ${deltaCls}">${deltaTxt}</span>
+            ${linkHtml}
+          </div>
+        `;
+      }
       return `
         <tr data-ing-id="${escapeHtml(ing.id)}">
           <td>
             <input class="input-inline" data-field="nome" value="${escapeHtml(ing.nome)}" />
+            ${aiSubHtml}
           </td>
           <td>
             <input class="input-inline" data-field="categoria" value="${escapeHtml(ing.categoria)}" style="min-width:120px;" />
@@ -534,7 +572,8 @@
           <td class="td-right">
             <strong class="ing-unit-cost" style="color:var(--gold-dark);">${formatBRL(unitCost, 4)} / ${escapeHtml(ing.unidade)}</strong>
           </td>
-          <td class="td-right">
+          <td class="td-right" style="white-space:nowrap;">
+            <button class="btn btn-ghost btn-sm btn-ai-refresh-ing" type="button" title="Pesquisar preço deste insumo ao vivo com IA">✨</button>
             <button class="btn btn-danger-ghost btn-sm btn-del-ing" type="button" title="Excluir insumo">Excluir</button>
           </td>
         </tr>
@@ -891,6 +930,11 @@
       badge.textContent = `${formatNum(p.margemDiretaPct, 1)}% margem`;
     }
 
+    const roiBadge = card.querySelector('.pricing-roi-badge');
+    if (roiBadge) {
+      roiBadge.textContent = `ROI ${formatNum(p.roiUnitarioPct || 0, 0)}%`;
+    }
+
     const hint = card.querySelector('.pricing-cost-hint');
     if (hint) {
       hint.innerHTML = `Custo Unitário Exato: <strong style="color:var(--text-choco);">${formatBRL(p.custoUnitario)}</strong> • Sugerido p/ ${formatNum(state.config.margemMinima, 0)}%: <strong>${formatBRL(p.precoMinimoRecomendado)}</strong>`;
@@ -935,6 +979,7 @@
               <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
                 <h3 style="font-size:1.1rem;">${escapeHtml(prod.nome)}</h3>
                 <span class="badge ${badgeClass} pricing-badge">${formatNum(p.margemDiretaPct, 1)}% margem</span>
+                <span class="badge badge-gold pricing-roi-badge">ROI ${formatNum(p.roiUnitarioPct || 0, 0)}%</span>
               </div>
               <div class="pricing-cost-hint" style="font-size:0.83rem; color:var(--text-muted); margin-bottom:10px;">
                 Custo Unitário Exato: <strong style="color:var(--text-choco);">${formatBRL(p.custoUnitario)}</strong>
@@ -976,6 +1021,9 @@
     }).join('');
 
     renderComboSimulator();
+    if (window.AnasAI && typeof window.AnasAI.renderPricingAiBanner === 'function') {
+      window.AnasAI.renderPricingAiBanner();
+    }
   }
 
   function updateComboResultDOM() {
@@ -1135,6 +1183,70 @@
       </div>
     `;
 
+    // Painel de ROI (Retorno sobre Investimento)
+    const roiPanelEl = document.getElementById('roi-panel-container');
+    if (roiPanelEl) {
+      const roiCicloCompras = Number(proj.roiCicloComprasPct || 0);
+      const roiInvestTotal = Number(proj.roiInvestimentoTotalCicloPct || 0);
+      const roiAnual = Number(proj.roiAnualizadoPct || 0);
+      const roiRealPedidos = Number(proj.roiRealJaInvestidoPct || 0);
+      const multPorReal = proj.investimentoCompraFechada > 0
+        ? (proj.investimentoCompraFechada + proj.lucroLiquidoMix) / proj.investimentoCompraFechada
+        : 0;
+      const realProgressPct = Math.max(0, Math.min(100, roiRealPedidos));
+
+      const topRoiProducts = [...proj.productSummaries]
+        .sort((a, b) => (b.pricing.roiUnitarioPct || 0) - (a.pricing.roiUnitarioPct || 0))
+        .slice(0, 5);
+
+      const rankingHtml = topRoiProducts.map((p, idx) => {
+        const roiU = Number(p.pricing.roiUnitarioPct || 0);
+        const barW = Math.max(4, Math.min(100, roiU / 3));
+        return `
+          <div class="roi-rank-row">
+            <span class="roi-rank-pos">#${idx + 1}</span>
+            <span class="roi-rank-name" title="${escapeHtml(p.recipe.nome)}">${escapeHtml(p.recipe.nome)}</span>
+            <div class="bar-track" style="height:10px;">
+              <div class="bar-fill" style="width:${barW.toFixed(1)}%; background:${roiU >= 100 ? 'var(--olive)' : 'var(--gold-baked)'};"></div>
+            </div>
+            <strong class="tabular" style="min-width:74px; text-align:right; color:${roiU >= 100 ? 'var(--olive)' : 'var(--gold-dark)'};">${formatNum(roiU, 0)}% ROI</strong>
+          </div>
+        `;
+      }).join('');
+
+      roiPanelEl.innerHTML = `
+        <div class="roi-metrics-grid">
+          <div class="roi-metric-box highlight">
+            <span class="roi-metric-lbl">ROI do Ciclo (Capital de Giro)</span>
+            <strong class="roi-metric-val ${roiCicloCompras >= 50 ? 'olive' : (roiCicloCompras > 0 ? 'gold' : 'terracotta')}">${formatNum(roiCicloCompras, 1)}%</strong>
+            <span class="roi-metric-sub">Cada R$ 1,00 em insumos vira ${formatBRL(multPorReal)}</span>
+          </div>
+          <div class="roi-metric-box">
+            <span class="roi-metric-lbl">Retorno p/ Ciclo (Invest. Total)</span>
+            <strong class="roi-metric-val">${formatNum(roiInvestTotal, 1)}%</strong>
+            <span class="roi-metric-sub">ROI anualizado proj.: <strong>${formatNum(roiAnual, 0)}%</strong></span>
+          </div>
+          <div class="roi-metric-box">
+            <span class="roi-metric-lbl">Payback Completo</span>
+            <strong class="roi-metric-val gold">${Number.isFinite(proj.paybackCiclos) ? `${formatNum(proj.paybackCiclos, 1)} ciclos` : '—'}</strong>
+            <span class="roi-metric-sub">${Number.isFinite(proj.paybackAComprarCiclos) ? `Só o que falta comprar: ${formatNum(proj.paybackAComprarCiclos, 1)} ciclos` : 'Defina fornadas'}</span>
+          </div>
+          <div class="roi-metric-box">
+            <span class="roi-metric-lbl">Recuperado (Vendas Reais)</span>
+            <strong class="roi-metric-val olive">${formatNum(roiRealPedidos, 1)}%</strong>
+            <span class="roi-metric-sub">${formatBRL(proj.lucroRealPedidos || 0)} lucro real / ${formatBRL(proj.totalJaInvestido)} gasto</span>
+            <div class="bar-track" style="height:7px; margin-top:5px;">
+              <div class="bar-fill" style="width:${realProgressPct.toFixed(1)}%; background:var(--olive);"></div>
+            </div>
+          </div>
+        </div>
+        <div class="roi-ranking-wrap">
+          <div style="font-size:0.76rem; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px;">🏆 Ranking de ROI Unitário por Produto (Lucro ÷ Custo)</div>
+          ${rankingHtml}
+        </div>
+      `;
+    }
+
     // Ponto de Equilíbrio (Break-even)
     const totalInvest = proj.investimentoTotalInicial;
     const cyclesToPay = proj.lucroLiquidoMix > 0 ? totalInvest / proj.lucroLiquidoMix : Infinity;
@@ -1183,17 +1295,24 @@
 
     // Lista de Compras
     document.getElementById('shopping-list-tbody').innerHTML = proj.shoppingList.length
-      ? proj.shoppingList.map((item) => `
-          <tr>
-            <td><strong>${escapeHtml(item.ingredient.nome)}</strong></td>
-            <td class="td-right">${formatNum(item.needed, item.needed % 1 === 0 ? 0 : 1)} ${escapeHtml(item.ingredient.unidade)}</td>
-            <td class="td-right"><strong>${formatNum(item.packs, 0)}x</strong> (${formatInputNumber(item.ingredient.quantidade)} ${escapeHtml(item.ingredient.unidade)})</td>
-            <td class="td-right">${formatNum(item.sobra, item.sobra % 1 === 0 ? 0 : 1)} ${escapeHtml(item.ingredient.unidade)}</td>
-            <td class="td-right">${formatBRL(item.custoConsumido)}</td>
-            <td class="td-right"><strong style="color:var(--gold-dark);">${formatBRL(item.custoCompra)}</strong></td>
-          </tr>
-        `).join('')
-      : '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:24px;">Defina pelo menos 1 fornada acima para gerar a lista de compras.</td></tr>';
+      ? proj.shoppingList.map((item) => {
+          const meta = item.ingredient.aiMeta;
+          const storeCell = meta && meta.lastStore
+            ? `<span class="badge badge-gold" style="font-size:0.72rem;">${escapeHtml(meta.lastStore)}${meta.productUrl ? ` <a href="${escapeHtml(meta.productUrl)}" target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration:none;">↗</a>` : ''}</span>`
+            : '<span style="font-size:0.78rem; color:var(--text-soft);">—</span>';
+          return `
+            <tr>
+              <td><strong>${escapeHtml(item.ingredient.nome)}</strong></td>
+              <td>${storeCell}</td>
+              <td class="td-right">${formatNum(item.needed, item.needed % 1 === 0 ? 0 : 1)} ${escapeHtml(item.ingredient.unidade)}</td>
+              <td class="td-right"><strong>${formatNum(item.packs, 0)}x</strong> (${formatInputNumber(item.ingredient.quantidade)} ${escapeHtml(item.ingredient.unidade)})</td>
+              <td class="td-right">${formatNum(item.sobra, item.sobra % 1 === 0 ? 0 : 1)} ${escapeHtml(item.ingredient.unidade)}</td>
+              <td class="td-right">${formatBRL(item.custoConsumido)}</td>
+              <td class="td-right"><strong style="color:var(--gold-dark);">${formatBRL(item.custoCompra)}</strong></td>
+            </tr>
+          `;
+        }).join('')
+      : '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:24px;">Defina pelo menos 1 fornada acima para gerar a lista de compras.</td></tr>';
   }
 
   function renderInvestimento() {
@@ -1580,8 +1699,15 @@
     });
 
     document.getElementById('insumos-tbody').addEventListener('click', (e) => {
-      if (!e.target.classList.contains('btn-del-ing')) return;
       const tr = e.target.closest('tr');
+      if (!tr) return;
+      if (e.target.classList.contains('btn-ai-refresh-ing')) {
+        if (window.AnasAI && typeof window.AnasAI.syncSingleIngredient === 'function') {
+          window.AnasAI.syncSingleIngredient(tr.dataset.ingId, e.target);
+        }
+        return;
+      }
+      if (!e.target.classList.contains('btn-del-ing')) return;
       const id = tr.dataset.ingId;
       if (confirm('Excluir este insumo do estoque base?')) {
         state.ingredients = state.ingredients.filter((i) => i.id !== id);
@@ -2067,7 +2193,10 @@
         `Equipamentos Pendentes: ${formatBRL(proj.totalEquipamentosAComprar)}`,
         `Total a Comprar Geral: ${formatBRL(proj.totalAComprarGeral)}`,
         '----------------------------------------',
-        ...proj.shoppingList.map((i) => `• ${i.ingredient.nome}: ${formatNum(i.packs, 0)}x emb. (${formatInputNumber(i.ingredient.quantidade)} ${i.ingredient.unidade}) — ${formatBRL(i.custoCompra)}`),
+        ...proj.shoppingList.map((i) => {
+          const loja = i.ingredient.aiMeta?.lastStore ? ` [${i.ingredient.aiMeta.lastStore}]` : '';
+          return `• ${i.ingredient.nome}${loja}: ${formatNum(i.packs, 0)}x emb. (${formatInputNumber(i.ingredient.quantidade)} ${i.ingredient.unidade}) — ${formatBRL(i.custoCompra)}`;
+        }),
       ];
       navigator.clipboard?.writeText(lines.join('\n')).then(() => {
         showToast('Lista de compras copiada!');
@@ -2440,6 +2569,44 @@
       `;
     }).join('');
   }
+
+  // Ponte limpa para o módulo de IA (gestao-ai.js)
+  window.AnasGestao = {
+    getState: () => state,
+    replaceState: (nextState, { persistLocal = true, pushCloud = false, updatedAt = null } = {}) => {
+      state = normalizeState(nextState);
+      if (persistLocal) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (e) {
+          console.warn('Erro ao salvar localStorage:', e);
+        }
+      }
+      if (updatedAt) {
+        lastCloudUpdatedAt = updatedAt;
+        setStatusBadge(`Salvo na nuvem • ${formatHora(updatedAt)}`, 'olive');
+      }
+      if (pushCloud) {
+        saveState();
+      }
+      renderActiveTab();
+    },
+    saveState,
+    pushToCloud,
+    syncFromCloud,
+    renderActiveTab,
+    switchTab,
+    getActiveTab: () => activeTab,
+    showToast,
+    getNormalizedMix,
+    getInvestmentProjection,
+    escapeHtml,
+    formatBRL,
+    formatNum,
+    formatInputNumber,
+    parseLocaleNumber,
+    clone,
+  };
 
   // Inicialização
   bindEvents();

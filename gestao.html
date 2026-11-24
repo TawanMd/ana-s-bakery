@@ -71,6 +71,13 @@
             Pedidos Internos
           </button>
         </li>
+        <li>
+          <button class="nav-btn nav-btn-ai" data-tab="ia" type="button">
+            <svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/><path d="M19 3l.8 2.2L22 6l-2.2.8L19 9l-.8-2.2L16 6l2.2-.8L19 3z"/><path d="M5 16l.8 2.2L8 19l-2.2.8L5 22l-.8-2.2L2 19l2.2-.8L5 16z"/></svg>
+            Central IA
+            <span class="badge badge-gold ai-nav-pill" id="ai-nav-badge">Auto</span>
+          </button>
+        </li>
       </ul>
 
       <div class="sidebar-footer">
@@ -106,6 +113,7 @@
         </div>
         <div class="topbar-actions">
           <span class="badge badge-gold" id="badge-storage-status">Sincronizando nuvem...</span>
+          <button class="btn btn-ai btn-sm" id="btn-topbar-ai-sync" type="button" title="Pesquisar preços ao vivo nos mercados SC e recalcular ROIs com Gemini IA">✨ Sync Preços IA</button>
           <button class="btn btn-secondary btn-sm" id="btn-theme-toggle" type="button" title="Alternar modo claro/escuro" aria-pressed="false">🌙 Escuro</button>
           <button class="btn btn-secondary btn-sm" id="btn-sync-cloud" type="button" title="Buscar últimas alterações salvas na nuvem">↻ Atualizar</button>
           <button class="btn btn-primary btn-sm" id="btn-quick-new-recipe" type="button">+ Nova Receita</button>
@@ -115,7 +123,9 @@
       <main class="content-wrap">
         <!-- ==================== TAB 1: VISÃO GERAL ==================== -->
         <section id="tab-dashboard" class="tab-panel active">
-          <div class="kpi-grid" id="dashboard-kpis"></div>
+          <div class="kpi-grid kpi-grid-5" id="dashboard-kpis"></div>
+
+          <div id="dashboard-ai-briefing" class="ai-briefing-slot" style="margin-bottom:20px;"></div>
 
           <div class="grid-2" style="margin-bottom:20px;">
             <div class="card">
@@ -156,6 +166,7 @@
                     <th class="td-right">Preço Direto</th>
                     <th class="td-right">Lucro Direto</th>
                     <th class="td-right">Margem</th>
+                    <th class="td-right">ROI Unit.</th>
                     <th class="td-right">iFood Básico</th>
                     <th class="td-right">iFood Entrega</th>
                   </tr>
@@ -176,7 +187,9 @@
               </select>
             </div>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
-              <button id="btn-apply-fort-prices" class="btn btn-secondary" type="button" title="Atualizar preços base conforme pesquisa Fort Atacadista Campeche/SC">↻ Aplicar Preços Fort Campeche</button>
+              <button id="btn-insumos-ai-sync" class="btn btn-ai" type="button" title="Pesquisar preços reais hoje nos mercados de SC e Confeitaria com Gemini IA">✨ Pesquisar Preços ao Vivo (IA)</button>
+              <button id="btn-insumos-scan-receipt" class="btn btn-secondary" type="button" title="Enviar foto do cupom fiscal para atualizar preços automaticamente">📸 Ler Nota Fiscal (IA)</button>
+              <button id="btn-apply-fort-prices" class="btn btn-ghost btn-sm" type="button" title="Restaurar preços base Fort Atacadista Campeche/SC">↻ Base Fort</button>
               <button id="btn-add-insumo" class="btn btn-primary" type="button">+ Adicionar Insumo</button>
             </div>
           </div>
@@ -249,6 +262,8 @@
               Os preços sugeridos no iFood garantem que você receba <strong>exatamente o mesmo valor líquido</strong> da venda direta.
             </div>
           </div>
+
+          <div id="pricing-ai-banner" style="margin-bottom:16px;"></div>
 
           <div id="pricing-cards-container"></div>
 
@@ -415,6 +430,18 @@
             </div>
           </div>
 
+          <!-- Painel de ROI & Retorno sobre Investimento -->
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Painel de ROI (Retorno sobre Investimento)</h2>
+                <p class="card-desc">Acompanhe o retorno real do capital de giro, payback estimado e quais doces multiplicam melhor cada R$ 1,00 investido.</p>
+              </div>
+              <button id="btn-invest-ai-sync" class="btn btn-ai btn-sm" type="button">✨ Recalcular ROIs c/ Preços de Hoje</button>
+            </div>
+            <div id="roi-panel-container"></div>
+          </div>
+
           <!-- Ponto de Equilíbrio & Gráfico Financeiro -->
           <div class="grid-2" style="margin-bottom:20px;">
             <div class="card">
@@ -452,6 +479,7 @@
                 <thead>
                   <tr>
                     <th>Insumo / Embalagem</th>
+                    <th>Onde Comprar (IA)</th>
                     <th class="td-right">Qtd. Necessária</th>
                     <th class="td-right">Embalagens a Comprar</th>
                     <th class="td-right">Sobra em Estoque</th>
@@ -485,6 +513,273 @@
 
           <div id="pedidos-list-container" style="display:flex; flex-direction:column; gap:18px;"></div>
         </section>
+
+        <!-- ==================== TAB 7: CENTRAL IA (ANA'S COPILOT) ==================== -->
+        <section id="tab-ia" class="tab-panel">
+          <!-- Hero / Barra de Status da IA -->
+          <div class="card ai-hero-card" style="margin-bottom:20px;">
+            <div class="ai-hero-top">
+              <div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+                  <span class="badge badge-ai">✨ Gemini AI Conectado</span>
+                  <span class="badge badge-olive" id="ai-schedule-badge">⏰ Sync Diário: 07:00 (Brasília)</span>
+                  <span class="badge badge-gold" id="ai-model-badge">Modelo: Gemini Flash-Lite</span>
+                </div>
+                <h2 class="card-title" style="font-size:1.35rem;">Central de Inteligência &amp; Radar Diário de Preços</h2>
+                <p class="card-desc" id="ai-last-sync-desc">Pesquisa automática diária nos mercados de Florianópolis/SC (Giassi, Bistek, Angeloni, Atacadão) e Loja Santo Antônio com recálculo de preços unitários, investimentos e ROIs.</p>
+              </div>
+              <div class="ai-hero-actions">
+                <button id="btn-ai-sync-now" class="btn btn-ai" type="button">🚀 Pesquisar Preços &amp; Atualizar ROIs</button>
+                <button id="btn-ai-preview-sync" class="btn btn-secondary btn-sm" type="button" title="Pesquisa preços reais e mostra o impacto nos ROIs sem salvar ainda">👁️ Simular</button>
+                <button id="btn-ai-rollback" class="btn btn-danger-ghost btn-sm" type="button" style="display:none;" title="Desfazer a última atualização automática da IA">↩️ Desfazer Sync</button>
+              </div>
+            </div>
+
+            <!-- Sub-navegação da Central IA -->
+            <div class="ai-subnav" role="tablist">
+              <button class="ai-subtab active" data-ai-sub="radar" type="button">📡 Radar Diário &amp; ROIs</button>
+              <button class="ai-subtab" data-ai-sub="chat" type="button">💬 Consultor CFO IA</button>
+              <button class="ai-subtab" data-ai-sub="receipt" type="button">📸 Ler Nota Fiscal</button>
+              <button class="ai-subtab" data-ai-sub="lab" type="button">🧪 Laboratório Criativo IA</button>
+            </div>
+          </div>
+
+          <!-- Status/Progresso ao vivo durante chamadas IA -->
+          <div id="ai-progress-banner" class="ai-progress-banner" style="display:none;">
+            <span class="ai-spinner" aria-hidden="true"></span>
+            <span id="ai-progress-text">Pesquisando ofertas nos mercados de Florianópolis/SC e auditando com Gemini...</span>
+          </div>
+
+          <!-- ===== SUB 1: RADAR DIÁRIO DE PREÇOS & ROIs ===== -->
+          <div id="ia-sub-radar" class="ai-subpanel active">
+            <!-- Configurações da Automação Diária -->
+            <div class="config-strip ai-settings-strip">
+              <label class="ai-toggle-item">
+                <input id="ai-cfg-auto-apply" type="checkbox" checked />
+                <span><strong>Auto-atualizar insumos</strong> no sync diário (07h)</span>
+              </label>
+              <label class="ai-toggle-item">
+                <input id="ai-cfg-protect-margins" type="checkbox" checked />
+                <span><strong>Proteger margem mínima</strong> ajustando preço unitário se cair</span>
+              </label>
+              <label class="ai-toggle-item">
+                <input id="ai-cfg-check-equip" type="checkbox" />
+                <span>Pesquisar também <strong>equipamentos pendentes</strong></span>
+              </label>
+              <div class="field-group" style="flex-direction:row; align-items:center; gap:8px; margin-left:auto;">
+                <label for="ai-cfg-max-delta" style="margin:0;">Trava segurança (%):</label>
+                <input id="ai-cfg-max-delta" type="text" inputmode="numeric" class="input input-num" value="55" style="width:68px;" title="Ignora atualizações automáticas se a variação passar deste percentual" />
+              </div>
+            </div>
+
+            <!-- Briefing Executivo IA -->
+            <div id="ai-radar-briefing-box" style="margin-bottom:20px;"></div>
+
+            <!-- Impacto Antes vs Depois (ROIs, Investimentos & Cesta) -->
+            <div id="ai-sync-impact-box" style="margin-bottom:20px;"></div>
+
+            <!-- Histórico de Evolução Diária (ROI & Custo da Cesta) + Roteiro por Mercado -->
+            <div class="grid-2" style="margin-bottom:20px;">
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h3 class="card-title">Evolução Diária: ROI &amp; Custo da Cesta</h3>
+                    <p class="card-desc">Histórico acumulado dos syncs diários da IA (últimos 90 dias).</p>
+                  </div>
+                </div>
+                <div id="ai-history-chart" class="chart-box"></div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h3 class="card-title">Roteiro Inteligente de Compras (SC)</h3>
+                    <p class="card-desc">Onde comprar cada insumo da lista planejada pelo menor preço encontrado hoje.</p>
+                  </div>
+                </div>
+                <div id="ai-shopping-route-box"></div>
+              </div>
+            </div>
+
+            <!-- Reajustes de Preço Unitário Sugeridos/Aplicados -->
+            <div id="ai-price-adjustments-box" style="margin-bottom:20px;"></div>
+
+            <!-- Cotações de Equipamentos Pendentes (se habilitado) -->
+            <div id="ai-equipments-quotes-box" style="margin-bottom:20px;"></div>
+
+            <!-- Tabela Detalhada da Auditoria de Preços -->
+            <div class="card" style="padding:0; overflow:hidden;">
+              <div class="card-header" style="padding:18px 22px 14px; margin-bottom:0; border-bottom:1px solid var(--border-gold);">
+                <div>
+                  <h3 class="card-title">Auditoria de Preços ao Vivo por Insumo</h3>
+                  <p class="card-desc">Comparativo real auditado pelo Gemini entre Giassi SC, Bistek SC, Angeloni SC, Atacadão e Loja Santo Antônio.</p>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  <button id="btn-ai-apply-all-preview" class="btn btn-primary btn-sm" type="button" style="display:none;">✓ Aplicar Tudo no Estoque</button>
+                </div>
+              </div>
+              <div class="table-wrap" style="border:none; border-radius:0;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Insumo</th>
+                      <th class="td-right">Antes</th>
+                      <th class="td-right">Preço IA</th>
+                      <th class="td-right">Variação</th>
+                      <th>Mercado &amp; Oferta Real</th>
+                      <th>Confiança</th>
+                      <th class="td-right">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ai-audit-tbody">
+                    <tr>
+                      <td colspan="7" style="text-align:center; color:var(--text-muted); padding:28px;">
+                        Clique em <strong>"🚀 Pesquisar Preços &amp; Atualizar ROIs"</strong> acima para executar a primeira pesquisa ao vivo nos mercados de SC!
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SUB 2: CONSULTOR FINANCEIRO IA (CHAT CFO) ===== -->
+          <div id="ia-sub-chat" class="ai-subpanel">
+            <div class="card ai-chat-card">
+              <div class="card-header" style="margin-bottom:12px;">
+                <div>
+                  <h3 class="card-title">Ana's CFO — Consultor Financeiro em Tempo Real</h3>
+                  <p class="card-desc">Conectado aos seus insumos, fichas técnicas, margens, iFood, investimentos, ROIs e pedidos reais.</p>
+                </div>
+                <button id="btn-ai-chat-clear" class="btn btn-ghost btn-sm" type="button">Limpar conversa</button>
+              </div>
+
+              <div class="ai-prompt-chips" id="ai-chat-chips">
+                <button class="ai-chip" type="button" data-prompt="Onde estou perdendo margem hoje e quais ajustes trazem mais lucro imediato?">💡 Onde aumentar lucro hoje?</button>
+                <button class="ai-chip" type="button" data-prompt="Analise meus ROIs atuais e me diga como bater o break-even (payback) mais rápido em Florianópolis.">📈 Acelerar ROI &amp; Payback</button>
+                <button class="ai-chip" type="button" data-prompt="Qual o melhor combo promocional para montar com meus doces de maior ROI e qual preço cobrar no Direto e iFood?">🎁 Melhor Combo de Alto ROI</button>
+                <button class="ai-chip" type="button" data-prompt="Quais ingredientes estão pesando mais no meu custo e como negociar ou substituir sem cair a qualidade artesanal?">🍫 Reduzir custo de insumos</button>
+                <button class="ai-chip" type="button" data-prompt="Monte uma meta diária de vendas (quantidade por doce) para lucrar R$ 2.500 líquidos no mês.">🎯 Meta de R$ 2.500/mês</button>
+              </div>
+
+              <div id="ai-chat-messages" class="ai-chat-messages">
+                <div class="ai-msg ai-msg-bot">
+                  <div class="ai-msg-avatar">✨</div>
+                  <div class="ai-msg-bubble">
+                    <strong>Olá! Sou a Ana's CFO (Gemini IA).</strong><br />
+                    Tenho acesso ao vivo a todos os seus insumos, receitas, margens, preços iFood, investimentos e ROIs. Escolha um atalho acima ou pergunte qualquer coisa sobre a gestão da Ana's Bakery!
+                  </div>
+                </div>
+              </div>
+
+              <form id="ai-chat-form" class="ai-chat-form">
+                <input id="ai-chat-input" type="text" class="input" placeholder="Ex: Se o chocolate nobre subir 15%, quanto preciso ajustar no Cookie NY?" autocomplete="off" />
+                <button id="btn-ai-chat-send" class="btn btn-ai" type="submit">Enviar ✨</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- ===== SUB 3: LEITOR DE NOTA FISCAL (GEMINI VISION) ===== -->
+          <div id="ia-sub-receipt" class="ai-subpanel">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">📸 Leitor Inteligente de Cupom / Nota Fiscal (Gemini Vision)</h3>
+                  <p class="card-desc">Tirou foto da nota do Fort Atacadista, Giassi, Bistek ou Angeloni? A IA lê os preços reais pagos e atualiza seu estoque e ROIs em 1 clique.</p>
+                </div>
+              </div>
+
+              <div class="ai-receipt-dropzone" id="ai-receipt-dropzone">
+                <input id="ai-receipt-file" type="file" accept="image/*" hidden />
+                <div class="ai-receipt-drop-inner">
+                  <div style="font-size:2rem; margin-bottom:6px;">🧾</div>
+                  <strong>Clique para enviar ou fotografar o cupom fiscal</strong>
+                  <p class="card-desc" style="margin:4px 0 12px;">JPG, PNG ou WebP • Otimizado automaticamente para leitura rápida</p>
+                  <button id="btn-ai-pick-receipt" class="btn btn-ai btn-sm" type="button">Selecionar Foto da Nota</button>
+                </div>
+              </div>
+
+              <div id="ai-receipt-result" style="margin-top:18px;"></div>
+            </div>
+          </div>
+
+          <!-- ===== SUB 4: LABORATÓRIO CRIATIVO IA ===== -->
+          <div id="ia-sub-lab" class="ai-subpanel">
+            <div class="grid-2" style="margin-bottom:20px;">
+              <!-- Ferramenta 1: Criador de Ficha Técnica IA -->
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h3 class="card-title">🧁 Criador de Ficha Técnica IA</h3>
+                    <p class="card-desc">Descreva um novo doce e a IA monta a receita completa usando os insumos do seu estoque, com custo unitário e preço sugerido.</p>
+                  </div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                  <div class="field-group">
+                    <label for="ai-recipe-idea">Ideia do doce ou base</label>
+                    <textarea id="ai-recipe-idea" class="input" rows="3" placeholder="Ex: Palha italiana gourmet de brigadeiro de café, 60g cada, rendendo 15 unidades"></textarea>
+                  </div>
+                  <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+                    <div class="field-group">
+                      <label for="ai-recipe-margin">Margem alvo (%)</label>
+                      <input id="ai-recipe-margin" type="text" inputmode="decimal" class="input input-num" value="50" style="width:100px;" />
+                    </div>
+                    <button id="btn-ai-create-recipe" class="btn btn-ai" type="button">✨ Gerar Ficha Técnica</button>
+                  </div>
+                  <div id="ai-recipe-output"></div>
+                </div>
+              </div>
+
+              <!-- Ferramenta 2: Otimizador de Meta de Lucro & ROI -->
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h3 class="card-title">🎯 Otimizador de Meta de Lucro &amp; ROI</h3>
+                    <p class="card-desc">Informe quanto deseja lucrar e sua capacidade de produção — a IA calcula o mix ideal de fornadas com maior ROI.</p>
+                  </div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                  <div class="grid-3">
+                    <div class="field-group">
+                      <label for="ai-goal-profit">Meta de Lucro (R$)</label>
+                      <input id="ai-goal-profit" type="text" inputmode="decimal" class="input input-num" value="1500" />
+                    </div>
+                    <div class="field-group">
+                      <label for="ai-goal-period">Período</label>
+                      <select id="ai-goal-period" class="select">
+                        <option value="Semanal">Semanal</option>
+                        <option value="Mensal" selected>Mensal</option>
+                      </select>
+                    </div>
+                    <div class="field-group">
+                      <label for="ai-goal-max-units">Limite Unidades</label>
+                      <input id="ai-goal-max-units" type="text" inputmode="numeric" class="input input-num" value="250" />
+                    </div>
+                  </div>
+                  <div>
+                    <button id="btn-ai-optimize-goal" class="btn btn-ai" type="button">✨ Otimizar Plano de Fornadas</button>
+                  </div>
+                  <div id="ai-goal-output"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Ferramenta 3: Gerador de Campanhas de Venda -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">📣 Gerador de Campanhas de Venda (WhatsApp &amp; Instagram)</h3>
+                  <p class="card-desc">A IA escolhe os doces de maior ROI e escreve textos prontos com os preços exatos atualizados para vender mais hoje.</p>
+                </div>
+              </div>
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+                <input id="ai-mkt-occasion" type="text" class="input" style="flex:1; min-width:240px;" value="Pronta-entrega de fim de semana no Campeche / Florianópolis" placeholder="Ex: Dia das Mães, Black Friday, Pronta-entrega de sexta-feira..." />
+                <button id="btn-ai-generate-mkt" class="btn btn-ai" type="button">✨ Gerar Textos de Venda</button>
+              </div>
+              <div id="ai-mkt-output"></div>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   </div>
@@ -514,6 +809,10 @@
     <button class="mobile-nav-btn" data-tab="pedidos" type="button">
       <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
       Pedidos
+    </button>
+    <button class="mobile-nav-btn" data-tab="ia" type="button">
+      <svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
+      IA
     </button>
   </nav>
 
@@ -606,5 +905,6 @@
 
   <script src="gestao-data.js"></script>
   <script src="gestao.js"></script>
+  <script src="gestao-ai.js"></script>
 </body>
 </html>

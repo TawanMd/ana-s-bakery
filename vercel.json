@@ -3,6 +3,26 @@
   "version": 2,
   "cleanUrls": true,
   "trailingSlash": false,
+  "functions": {
+    "api/cron/daily-price-sync.js": {
+      "maxDuration": 300,
+      "experimentalTriggers": [
+        {
+          "type": "schedule/v1beta"
+        }
+      ]
+    },
+    "api/ai/*.js": {
+      "maxDuration": 120
+    }
+  },
+  "schedules": {
+    "daily-price-sync": {
+      "schedule": "0 7 * * *",
+      "timezone": "America/Sao_Paulo",
+      "function": "api/cron/daily-price-sync"
+    }
+  },
   "proxy": {
     "entrypoint": "proxy.js",
     "matcher": [
@@ -11,7 +31,12 @@
       "/gestao.css",
       "/gestao.js",
       "/gestao-data.js",
-      "/api/gestao-state"
+      "/gestao-ai.js",
+      "/api/gestao-state",
+      "/api/ai/status",
+      "/api/ai/price-sync",
+      "/api/ai/assistant",
+      "/api/ai/tools"
     ]
   },
   "headers": [
