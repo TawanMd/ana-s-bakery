@@ -40,6 +40,9 @@ const DEFAULT_INGREDIENTS = [
   { id: 'emb-familia', nome: 'Caixa/Embalagem tamanho família/gigante', categoria: 'Embalagens', preco: 7.50, quantidade: 1, unidade: 'un', obs: 'Caixa kraft c/ visor 20-25 cm + frete' },
   { id: 'granulado-gourmet', nome: 'Granulado gourmet', categoria: 'Chocolates & Cacau', preco: 30.00, quantidade: 500, unidade: 'g', obs: 'Pct 500 g (Dori/Mavalério; Melken 400g ~R$46)' },
   { id: 'baunilha', nome: 'Essência de baunilha', categoria: 'Especiarias & Fermentos', preco: 8.00, quantidade: 30, unidade: 'ml', obs: 'Frasco 30 ml (Arcólor/Mix/Dr. Oetker)' },
+  { id: 'leite-ninho', nome: 'Leite em pó Ninho', categoria: 'Laticínios', preco: 24.50, quantidade: 380, unidade: 'g', obs: 'Lata 380 g Integral/Forti+ (Fort Atacadista/SC)' },
+  { id: 'creme-avela', nome: 'Creme de avelã (Nutella / Confeiteiro)', categoria: 'Chocolates & Cacau', preco: 48.00, quantidade: 650, unidade: 'g', obs: 'Pote 650 g Nutella (~R$48) ou Harald Confeiteiro 1 kg (~R$42)' },
+  { id: 'emb-tortinha', nome: 'Embalagem p/ tortinha (G640/G650) + adesivo', categoria: 'Embalagens', preco: 0.90, quantidade: 1, unidade: 'un', obs: 'Pote PET c/ tampa Galvanotek G640/G650 (~R$0,55) + forminha/adesivo (~R$0,35)' },
 ];
 
 const DEFAULT_RECIPES = [
@@ -331,6 +334,37 @@ const DEFAULT_RECIPES = [
       'Bater os 3 ovos com os 200 g de açúcar refinado por ~3 min até clarear e espumar (essencial para formar a casquinha craquelada).',
       'Incorporar o chocolate derretido e, em seguida, peneirar a farinha (100 g) e o cacau 100% (30 g), mexendo delicadamente com espátula.',
       'Assar em forma quadrada forrada (20x20 cm) a 180 °C por 22 a 26 min (palito sai levemente úmido com migalhas). Esfriar totalmente antes de cortar em 12 pedaços e embalar.',
+    ],
+  },
+  {
+    id: 'prod-tortinha-ninho-avela',
+    nome: 'Tortinha de Leite Ninho c/ Creme de Avelã (14 cm circ.)',
+    tipo: 'produto',
+    rendimento: 20,
+    unidadeRendimento: 'un',
+    pesoReferencia: '20 un • 14 cm circ. (~4,5 cm diâm. / ~115 g)',
+    custosIndiretosPct: 15,
+    precoVendaDireta: 9.00,
+    fornadasPlanejadas: 0,
+    itens: [
+      { tipo: 'insumo', refId: 'farinha', quantidade: 720 },
+      { tipo: 'insumo', refId: 'acucar-refinado', quantidade: 540 },
+      { tipo: 'insumo', refId: 'margarina', quantidade: 120 },
+      { tipo: 'insumo', refId: 'ovos', quantidade: 1 },
+      { tipo: 'insumo', refId: 'baunilha', quantidade: 0.5 },
+      { tipo: 'insumo', refId: 'fermento', quantidade: 15 },
+      { tipo: 'insumo', refId: 'leite-condensado', quantidade: 395 },
+      { tipo: 'insumo', refId: 'creme-de-leite', quantidade: 400 },
+      { tipo: 'insumo', refId: 'leite-ninho', quantidade: 45 },
+      { tipo: 'insumo', refId: 'creme-avela', quantidade: 200 },
+      { tipo: 'insumo', refId: 'emb-tortinha', quantidade: 20 },
+    ],
+    passos: [
+      'Massa: misturar 6 xícaras de farinha de trigo (720 g), 3 xícaras de açúcar refinado (540 g), 6 colheres (sopa) de margarina (120 g), 1 ovo, 10 gotas de essência de baunilha (0,5 ml) e 1 colher (sopa) de fermento químico (15 g) até formar uma massa moldável (dica: se ficar esfarelando/seca, conferir a quantidade de margarina até dar liga sem grudar).',
+      'Modelar a massa em 20 forminhas de tortinha (~14 cm de circunferência / ~4,5 cm de diâmetro), furar levemente o fundo com garfo e assar em forno preaquecido a 180 °C por cerca de 15 a 20 min até dourar levemente as bordas; esfriar totalmente antes de desenformar.',
+      'Recheio 1 (Creme de Leite Ninho): em panela de fundo grosso, dissolver 3 colheres (sopa) de Leite Ninho (45 g) em 1 lata/cx de leite condensado (395 g) antes de ligar o fogo, juntar 1 caixa de creme de leite (200 g) e cozinhar em fogo médio-baixo mexendo sempre até ponto cremoso firme (~10 a 12 min). Cobrir com filme em contato e esfriar.',
+      'Recheio 2 (Ganache de Creme de Avelã): misturar 1 caixa de creme de leite (200 g) com 10 colheres (sopa) de creme de avelã (200 g) até obter um creme liso e homogêneo (se necessário, amornar por 15 s para facilitar a emulsão) e levar à geladeira por 20–30 min para ganhar ponto firme.',
+      'Montagem e Embalagem: com as casquinhas e recheios frios, rechear as 20 tortinhas em camadas de Creme de Leite Ninho (~27 g) e Ganache de Creme de Avelã (~20 g), finalizar a cobertura e acomodar nas embalagens individuais com tampa (G640/G650) e adesivo da Ana\'s Bakery.',
     ],
   },
 ];

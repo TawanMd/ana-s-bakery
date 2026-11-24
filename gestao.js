@@ -99,20 +99,13 @@
 
   function normalizeRecipes(list) {
     const defMap = new Map(DEFAULT_RECIPES.map((r) => [r.id, r]));
-    const normalized = list.map((rec) => {
+    return list.map((rec) => {
       const def = defMap.get(rec.id);
       const passos = Array.isArray(rec.passos) && rec.passos.length
         ? rec.passos
         : (def && Array.isArray(def.passos) ? clone(def.passos) : []);
       return { ...rec, passos };
     });
-    const requiredId = 'prod-pao-mel-casquinha-sem-recheio';
-    if (!normalized.some((r) => r.id === requiredId) && defMap.has(requiredId)) {
-      const idx = normalized.findIndex((r) => r.id === 'prod-pao-mel-ind');
-      if (idx >= 0) normalized.splice(idx + 1, 0, clone(defMap.get(requiredId)));
-      else normalized.push(clone(defMap.get(requiredId)));
-    }
-    return normalized;
   }
 
   function normalizeState(parsed) {
