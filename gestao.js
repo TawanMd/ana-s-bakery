@@ -2333,6 +2333,10 @@
         }).catch(() => {
           showToast('Não foi possível copiar automaticamente.');
         });
+      } else if (e.target.classList.contains('pedido-toggle-btn')) {
+        const isCollapsed = card.classList.toggle('is-collapsed');
+        e.target.textContent = isCollapsed ? '▾ Editar' : '▴ Ocultar';
+        e.target.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
       } else if (e.target.classList.contains('pedido-delete-btn')) {
         if (confirm(`Excluir o pedido "${order.cliente}"?`)) {
           state.internalOrders = state.internalOrders.filter((o) => o.id !== order.id);
@@ -2367,25 +2371,25 @@
     }
 
     document.getElementById('pedidos-kpis').innerHTML = `
-      <div class="kpi-card">
+      <div class="kpi-card pedido-kpi-card">
         <span class="kpi-label">Pedidos Ativos</span>
         <span class="kpi-value gold">${formatNum(ativos.length, 0)}</span>
-        <span class="kpi-sub">Encomendas presenciais sem taxa iFood</span>
+        <span class="kpi-sub">Sem taxa de app</span>
       </div>
-      <div class="kpi-card">
-        <span class="kpi-label">Faturamento dos Pedidos</span>
+      <div class="kpi-card pedido-kpi-card">
+        <span class="kpi-label">Faturamento</span>
         <span class="kpi-value">${formatBRL(faturamento)}</span>
-        <span class="kpi-sub">Total combinado com clientes</span>
+        <span class="kpi-sub">Total combinado</span>
       </div>
-      <div class="kpi-card">
-        <span class="kpi-label">Lucro Líquido Garantido</span>
+      <div class="kpi-card pedido-kpi-card">
+        <span class="kpi-label">Lucro Garantido</span>
         <span class="kpi-value ${lucroTotal >= 0 ? 'olive' : 'terracotta'}">${formatBRL(lucroTotal)}</span>
-        <span class="kpi-sub">Já descontando insumos, gás/luz e extras</span>
+        <span class="kpi-sub">Líquido após custos</span>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card pedido-kpi-card">
         <span class="kpi-label">Saldo a Receber</span>
         <span class="kpi-value gold">${formatBRL(saldoTotal)}</span>
-        <span class="kpi-sub">Total menos sinais já pagos</span>
+        <span class="kpi-sub">Falta receber</span>
       </div>
     `;
   }
@@ -2398,6 +2402,12 @@
       return `<div class="alert-banner amber"><span>⚡ <strong>Margem abaixo da meta (${formatNum(calc.margemMin, 0)}%):</strong> Lucro de ${formatNum(calc.margemRealPct, 1)}%. Recomendado cobrar ${formatBRL(calc.precoSugeridoSaudavel)} (mínimo ${formatBRL(calc.precoMinimoMeta)}).</span></div>`;
     }
     return '';
+  }
+
+  function formatDateBRShort(isoDate) {
+    if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return '';
+    const [y, m, d] = isoDate.split('-');
+    return `${d}/${m}/${y}`;
   }
 
   function updatePedidoFinancialSummary(card, order) {
@@ -2416,6 +2426,24 @@
 
     const precoInput = card.querySelector('[data-order-field="precoCobrado"]');
     if (precoInput) precoInput.placeholder = formatNum(calc.precoSugeridoSaudavel, 2);
+
+    const headTitle = card.querySelector('.ped-head-title');
+    if (headTitle) headTitle.textContent = order.cliente || 'Pedido sem nome';
+    const headDate = card.querySelector('.ped-head-date');
+    if (headDate) {
+      const dt = formatDateBRShort(order.dataEntrega);
+      headDate.textContent = dt ? `📅 ${dt}` : '';
+      headDate.style.display = dt ? 'inline-flex' : 'none';
+    }
+    const headCobrado = card.querySelector('.ped-head-cobrado');
+    if (headCobrado) headCobrado.textContent = formatBRL(calc.precoFinal);
+    const headLucro = card.querySelector('.ped-head-lucro');
+    if (headLucro) {
+      headLucro.textContent = formatBRL(calc.lucroLiquido);
+      headLucro.style.color = calc.lucroLiquido >= 0 ? 'var(--olive)' : 'var(--terracotta)';
+    }
+    const headSaldo = card.querySelector('.ped-head-saldo');
+    if (headSaldo) headSaldo.textContent = formatBRL(calc.saldoReceber);
 
     card.querySelector('.ped-custo-val').textContent = formatBRL(calc.custoTotal);
     card.querySelector('.ped-minimo-val').textContent = formatBRL(calc.precoMinimoMeta);
@@ -2444,39 +2472,68 @@
       const calc = calculateInternalOrder(order, state);
       const statusMeta = ORDER_STATUS_META[order.status] || ORDER_STATUS_META.orcamento;
       const margemBadgeClass = calc.statusMargem === 'saudavel' ? 'badge-olive' : (calc.statusMargem === 'baixa' ? 'badge-amber' : 'badge-terracotta');
+      const dataBR = formatDateBRShort(order.dataEntrega);
 
       const itensHtml = (order.itens || []).map((item, idx) => {
         const det = calc.itensDetalhados.find((d) => d.recipe.id === item.recipeId);
         return `
-          <div style="display:flex; gap:8px; align-items:center;" data-item-idx="${idx}">
-            <select class="select pedido-item-select" style="flex:1;">
+          <div class="pedido-item-row" data-item-idx="${idx}">
+            <select class="select pedido-item-select" aria-label="Produto do pedido">
               ${produtos.map((p) => `<option value="${escapeHtml(p.id)}" ${p.id === item.recipeId ? 'selected' : ''}>${escapeHtml(p.nome)}</option>`).join('')}
             </select>
-            <input type="text" inputmode="numeric" class="input input-num pedido-item-qty" value="${formatInputNumber(item.quantidade)}" style="width:72px;" />
-            <span class="tabular ped-item-subtotal" style="font-size:0.82rem; color:var(--text-muted); min-width:74px; text-align:right;">
-              ${det ? formatBRL(det.custoSubtotal) : formatBRL(0)}
-            </span>
-            <button class="btn btn-danger-ghost btn-sm pedido-del-item" type="button">✕</button>
+            <div class="pedido-item-controls">
+              <div class="pedido-item-qty-wrap">
+                <span class="pedido-item-mini-lbl">Qtd</span>
+                <input type="text" inputmode="numeric" class="input input-num pedido-item-qty" value="${formatInputNumber(item.quantidade)}" aria-label="Quantidade" />
+              </div>
+              <div class="pedido-item-sub-wrap">
+                <span class="pedido-item-mini-lbl">Custo</span>
+                <span class="tabular ped-item-subtotal">${det ? formatBRL(det.custoSubtotal) : formatBRL(0)}</span>
+              </div>
+              <button class="btn btn-danger-ghost btn-sm pedido-del-item" type="button" title="Remover item" aria-label="Remover item">✕</button>
+            </div>
           </div>
         `;
       }).join('');
 
       return `
         <article class="card pedido-card ${calc.statusMargem !== 'saudavel' ? 'alert-low' : ''}" data-order-id="${escapeHtml(order.id)}">
-          <div class="card-header" style="margin-bottom:14px;">
-            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-              <span class="badge ${statusMeta.badge}">${statusMeta.label}</span>
-              <span class="badge ped-margem-badge ${margemBadgeClass}">${formatNum(calc.margemRealPct, 1)}% margem</span>
+          <!-- Cabeçalho executivo do pedido -->
+          <div class="pedido-card-header">
+            <div class="pedido-header-main">
+              <h3 class="pedido-head-title ped-head-title">${escapeHtml(order.cliente || 'Pedido sem nome')}</h3>
+              <div class="pedido-badges-row">
+                <span class="badge ${statusMeta.badge}">${statusMeta.label}</span>
+                <span class="badge ped-margem-badge ${margemBadgeClass}">${formatNum(calc.margemRealPct, 1)}% margem</span>
+                <span class="badge badge-gold ped-head-date" style="display:${dataBR ? 'inline-flex' : 'none'};">${dataBR ? `📅 ${dataBR}` : ''}</span>
+              </div>
             </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <button class="btn btn-secondary btn-sm pedido-copy-quote" type="button">📋 Copiar Orçamento p/ Cliente</button>
+            <div class="pedido-header-actions">
+              <button class="btn btn-secondary btn-sm pedido-copy-quote" type="button">📋 Copiar</button>
+              <button class="btn btn-secondary btn-sm pedido-toggle-btn" type="button" aria-expanded="true">▴ Ocultar</button>
               <button class="btn btn-danger-ghost btn-sm pedido-delete-btn" type="button">Excluir</button>
             </div>
           </div>
 
-          <div class="grid-2">
-            <div style="display:flex; flex-direction:column; gap:12px;">
-              <div class="grid-2">
+          <!-- Faixa de resumo rápido (visível no mobile para leitura imediata) -->
+          <div class="pedido-quick-strip">
+            <div class="pedido-quick-stat">
+              <span class="pedido-quick-lbl">Cobrado</span>
+              <strong class="tabular ped-head-cobrado">${formatBRL(calc.precoFinal)}</strong>
+            </div>
+            <div class="pedido-quick-stat">
+              <span class="pedido-quick-lbl">Lucro Líq.</span>
+              <strong class="tabular ped-head-lucro" style="color:${calc.lucroLiquido >= 0 ? 'var(--olive)' : 'var(--terracotta)'};">${formatBRL(calc.lucroLiquido)}</strong>
+            </div>
+            <div class="pedido-quick-stat">
+              <span class="pedido-quick-lbl">A Receber</span>
+              <strong class="tabular ped-head-saldo" style="color:var(--gold-dark);">${formatBRL(calc.saldoReceber)}</strong>
+            </div>
+          </div>
+
+          <div class="pedido-body-grid">
+            <div class="pedido-form-col">
+              <div class="pedido-fields-2">
                 <div class="field-group">
                   <label>Cliente / Identificação</label>
                   <input type="text" class="input" data-order-field="cliente" value="${escapeHtml(order.cliente)}" />
@@ -2489,7 +2546,7 @@
                 </div>
               </div>
 
-              <div class="grid-2">
+              <div class="pedido-fields-2">
                 <div class="field-group">
                   <label>Contato (WhatsApp / Presencial)</label>
                   <input type="text" class="input" data-order-field="contato" value="${escapeHtml(order.contato)}" />
@@ -2500,12 +2557,12 @@
                 </div>
               </div>
 
-              <div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                  <strong style="font-size:0.84rem; text-transform:uppercase; color:var(--text-muted);">Itens do Pedido (Custo de Produção)</strong>
+              <div class="pedido-items-section">
+                <div class="pedido-items-head">
+                  <strong>Itens do Pedido (Custo)</strong>
                   <button class="btn btn-secondary btn-sm pedido-add-item" type="button">+ Item</button>
                 </div>
-                <div style="display:flex; flex-direction:column; gap:8px;">
+                <div class="pedido-items-list">
                   ${itensHtml || '<p class="card-desc">Adicione ao menos um item ao pedido.</p>'}
                 </div>
               </div>
@@ -2516,39 +2573,39 @@
               </div>
             </div>
 
-            <div class="channel-box highlight" style="display:flex; flex-direction:column; justify-content:space-between; gap:12px;">
-              <div class="grid-2">
-                <div>
-                  <div class="channel-label">Custo Total (Insumos + Extra)</div>
-                  <div class="channel-price ped-custo-val" style="font-size:1.25rem;">${formatBRL(calc.custoTotal)}</div>
+            <div class="channel-box highlight pedido-fin-box">
+              <div class="pedido-fin-top-2">
+                <div class="pedido-fin-metric">
+                  <div class="channel-label">Custo Total</div>
+                  <div class="channel-price ped-custo-val">${formatBRL(calc.custoTotal)}</div>
                 </div>
-                <div>
+                <div class="pedido-fin-metric">
                   <div class="channel-label">Lucro Líquido Real</div>
-                  <div class="channel-price ped-lucro-val" style="font-size:1.25rem; color:${calc.lucroLiquido >= 0 ? 'var(--olive)' : 'var(--terracotta)'};">${formatBRL(calc.lucroLiquido)}</div>
+                  <div class="channel-price ped-lucro-val" style="color:${calc.lucroLiquido >= 0 ? 'var(--olive)' : 'var(--terracotta)'};">${formatBRL(calc.lucroLiquido)}</div>
                 </div>
               </div>
 
-              <div style="background:var(--surface); border:1px solid var(--border-gold); border-radius:10px; padding:10px 12px; font-size:0.83rem;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+              <div class="pedido-price-guide">
+                <div class="pedido-guide-row">
                   <span>Preço mínimo (meta ${formatNum(calc.margemMin, 0)}%):</span>
                   <strong class="tabular ped-minimo-val">${formatBRL(calc.precoMinimoMeta)}</strong>
                 </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                  <span>Sugerido p/ lucro saudável (~${formatNum(calc.margemAlvoSaudavel, 0)}%):</span>
-                  <div style="display:flex; align-items:center; gap:8px;">
-                    <strong class="tabular ped-sugerido-val" style="color:var(--gold-dark); font-size:0.98rem;">${formatBRL(calc.precoSugeridoSaudavel)}</strong>
+                <div class="pedido-guide-row pedido-guide-suggest">
+                  <span>Sugerido saudável (~${formatNum(calc.margemAlvoSaudavel, 0)}%):</span>
+                  <div class="pedido-guide-apply">
+                    <strong class="tabular ped-sugerido-val">${formatBRL(calc.precoSugeridoSaudavel)}</strong>
                     <button class="btn btn-secondary btn-sm pedido-apply-sugerido" type="button">Aplicar</button>
                   </div>
                 </div>
               </div>
 
-              <div class="grid-3">
-                <div class="field-group">
+              <div class="pedido-money-grid">
+                <div class="field-group pedido-money-main">
                   <label>Preço Cobrado (R$)</label>
                   <input type="text" inputmode="decimal" class="input input-num" data-order-field="precoCobrado" value="${calc.temPrecoCustom ? formatNum(Number(order.precoCobrado), 2) : ''}" placeholder="${formatNum(calc.precoSugeridoSaudavel, 2)}" />
                 </div>
                 <div class="field-group">
-                  <label>Custo Extra / Entrega (R$)</label>
+                  <label>Extra / Entrega (R$)</label>
                   <input type="text" inputmode="decimal" class="input input-num" data-order-field="custoExtra" value="${formatNum(order.custoExtra || 0, 2)}" />
                 </div>
                 <div class="field-group">
@@ -2557,9 +2614,9 @@
                 </div>
               </div>
 
-              <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.88rem; padding-top:8px; border-top:1px dashed var(--border-gold);">
+              <div class="pedido-saldo-row">
                 <span>Saldo a receber na entrega:</span>
-                <strong class="tabular ped-saldo-val" style="font-size:1.05rem;">${formatBRL(calc.saldoReceber)}</strong>
+                <strong class="tabular ped-saldo-val">${formatBRL(calc.saldoReceber)}</strong>
               </div>
 
               <div class="ped-alert-slot">${buildOrderAlertHtml(calc)}</div>

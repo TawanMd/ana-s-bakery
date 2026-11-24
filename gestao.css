@@ -2053,3 +2053,553 @@ html[data-theme="dark"] .btn-ai {
     flex-direction: column;
   }
 }
+
+
+/* ==========================================================================
+   ABA DE PEDIDOS INTERNOS — LAYOUT RESPONSIVO & MOBILE-FIRST
+   ========================================================================== */
+
+.field-group {
+  min-width: 0;
+}
+
+.field-group .input,
+.field-group .select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pedido-card {
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.pedido-card.is-collapsed .pedido-body-grid {
+  display: none;
+}
+
+.pedido-card.is-collapsed .pedido-quick-strip {
+  display: grid;
+  margin-bottom: 0;
+}
+
+.pedido-card .alert-banner {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.pedido-card .alert-banner span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pedido-card input[type="date"] {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 40px;
+}
+
+.pedido-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--border-gold);
+  flex-wrap: wrap;
+}
+
+.pedido-header-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.pedido-head-title {
+  font-family: var(--font-display);
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: var(--text-choco);
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.pedido-badges-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pedido-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.pedido-quick-strip {
+  display: none;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border-gold);
+  border-radius: 10px;
+  padding: 10px 8px;
+  margin-bottom: 14px;
+}
+
+.pedido-quick-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pedido-quick-lbl {
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.pedido-quick-stat strong {
+  font-family: var(--font-display);
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--text-choco);
+}
+
+.pedido-body-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.pedido-form-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.pedido-fields-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pedido-items-section {
+  background: var(--bg-cream);
+  border: 1px solid var(--border-gold);
+  border-radius: 12px;
+  padding: 12px;
+  min-width: 0;
+}
+
+.pedido-items-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.pedido-items-head strong {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.pedido-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pedido-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pedido-item-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+
+.pedido-item-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pedido-item-qty-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pedido-item-mini-lbl {
+  display: none;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.pedido-item-qty {
+  width: 66px;
+  min-width: 56px;
+}
+
+.pedido-item-sub-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ped-item-subtotal {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 72px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pedido-fin-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.pedido-fin-top-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pedido-fin-metric {
+  background: var(--surface);
+  border: 1px solid var(--border-gold);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.pedido-fin-metric .channel-price {
+  font-size: 1.2rem;
+}
+
+.pedido-price-guide {
+  background: var(--surface);
+  border: 1px solid var(--border-gold);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.83rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pedido-guide-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pedido-guide-apply {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ped-sugerido-val {
+  color: var(--gold-dark);
+  font-size: 1rem;
+}
+
+.pedido-money-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pedido-saldo-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-gold);
+}
+
+.ped-saldo-val {
+  font-size: 1.08rem;
+  color: var(--text-choco);
+  white-space: nowrap;
+}
+
+/* ==================== MOBILE POLISH (<= 860px & <= 600px) ==================== */
+@media (max-width: 860px) {
+  .pedido-body-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .pedido-quick-strip {
+    display: grid;
+  }
+
+  #tab-pedidos .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  #tab-pedidos .search-group,
+  #tab-pedidos #pedido-status-filter,
+  #tab-pedidos #btn-add-pedido {
+    width: 100%;
+  }
+
+  #tab-pedidos #btn-add-pedido {
+    padding: 11px 16px;
+    font-size: 0.9rem;
+  }
+
+  #pedidos-kpis.kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .pedido-kpi-card {
+    padding: 12px 13px;
+    gap: 3px;
+  }
+
+  .pedido-kpi-card .kpi-label {
+    font-size: 0.68rem;
+  }
+
+  .pedido-kpi-card .kpi-value {
+    font-size: 1.25rem;
+  }
+
+  .pedido-kpi-card .kpi-sub {
+    font-size: 0.7rem;
+  }
+
+  .pedido-card {
+    padding: 15px 14px;
+  }
+
+  .pedido-card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .pedido-header-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 8px;
+  }
+
+  .pedido-copy-quote,
+  .pedido-toggle-btn {
+    width: 100%;
+    padding: 9px 10px;
+  }
+
+  .pedido-delete-btn {
+    padding: 9px 10px;
+    border: 1px solid var(--terracotta-border);
+  }
+
+  /* Evita qualquer scroll horizontal e libera altura no mobile */
+  html, body {
+    overflow-x: clip;
+  }
+
+  .content-wrap {
+    padding: 14px 12px 86px;
+  }
+
+  /* Topbar compacta e não-sticky em telas muito pequenas para dar espaço aos cards */
+  .topbar {
+    position: static;
+    padding: 12px 12px;
+    gap: 8px;
+  }
+
+  .topbar-left h1 {
+    font-size: 1.22rem;
+    line-height: 1.2;
+  }
+
+  .topbar-left p {
+    font-size: 0.76rem;
+    line-height: 1.3;
+  }
+
+  .topbar-actions {
+    gap: 6px;
+  }
+
+  /* Barra inferior com 7 abas sem cortar ícones/labels */
+  .mobile-nav {
+    padding: 5px 2px calc(5px + env(safe-area-inset-bottom, 0px));
+    gap: 1px;
+  }
+
+  .mobile-nav-btn {
+    font-size: 0.6rem;
+    padding: 5px 1px;
+    gap: 2px;
+  }
+
+  .mobile-nav-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@media (max-width: 600px) {
+  .pedido-fields-2 {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* Cada item do pedido vira um mini-card de 2 linhas com ZERO overflow horizontal */
+  .pedido-item-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border-gold);
+    border-radius: 10px;
+    padding: 10px;
+  }
+
+  .pedido-item-select {
+    width: 100%;
+    font-size: 0.88rem;
+    padding: 9px 10px;
+  }
+
+  .pedido-item-controls {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .pedido-item-mini-lbl {
+    display: inline;
+  }
+
+  .pedido-item-qty {
+    width: 64px;
+    padding: 7px 8px;
+    text-align: center;
+  }
+
+  .pedido-item-sub-wrap {
+    margin-left: auto;
+  }
+
+  .ped-item-subtotal {
+    min-width: auto;
+    color: var(--gold-dark);
+    font-size: 0.9rem;
+  }
+
+  .pedido-del-item {
+    min-width: 34px;
+    min-height: 34px;
+    border: 1px solid var(--terracotta-border);
+    border-radius: 8px;
+  }
+
+  /* Preço Cobrado em destaque (linha cheia) + Extra e Sinal lado a lado */
+  .pedido-money-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .pedido-money-main {
+    grid-column: 1 / -1;
+  }
+
+  .pedido-fin-box {
+    padding: 12px;
+  }
+
+  .pedido-fin-metric {
+    padding: 9px 10px;
+  }
+
+  .pedido-fin-metric .channel-price {
+    font-size: 1.08rem;
+  }
+
+  .pedido-guide-suggest {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .pedido-guide-apply {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .pedido-apply-sugerido {
+    padding: 7px 14px;
+  }
+
+  .pedido-saldo-row {
+    font-size: 0.84rem;
+  }
+
+  .ped-saldo-val {
+    font-size: 1.05rem;
+  }
+
+  .pedido-card .input,
+  .pedido-card .select {
+    font-size: 16px; /* evita zoom automático indesejado no iOS Safari */
+    padding: 9px 11px;
+  }
+
+  .pedido-card .pedido-item-qty {
+    font-size: 16px;
+    padding: 6px 8px;
+  }
+}
