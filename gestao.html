@@ -522,11 +522,11 @@
               <div>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
                   <span class="badge badge-ai">✨ Gemini AI Conectado</span>
-                  <span class="badge badge-olive" id="ai-schedule-badge">⏰ Sync Diário: 07:00 (Brasília)</span>
-                  <span class="badge badge-gold" id="ai-model-badge">Modelo: Gemini Flash-Lite</span>
+                  <span class="badge badge-olive" id="ai-schedule-badge">⏰ Sync Automático: Seg &amp; Qui • 07:00 (Brasília)</span>
+                  <span class="badge badge-gold" id="ai-model-badge">Copilot: Gemini 3.6 Flash</span>
                 </div>
-                <h2 class="card-title" style="font-size:1.35rem;">Central de Inteligência &amp; Radar Diário de Preços</h2>
-                <p class="card-desc" id="ai-last-sync-desc">Pesquisa automática diária nos mercados de Florianópolis/SC (Giassi, Bistek, Angeloni, Atacadão) e Loja Santo Antônio com recálculo de preços unitários, investimentos e ROIs.</p>
+                <h2 class="card-title" style="font-size:1.35rem;">Central de Inteligência &amp; Radar de Preços SC</h2>
+                <p class="card-desc" id="ai-last-sync-desc">Pesquisa automática 2x por semana (Segunda e Quinta às 07h) nos mercados de Florianópolis/SC (Giassi, Bistek, Angeloni, Atacadão) e Loja Santo Antônio com recálculo de preços unitários, investimentos e ROIs.</p>
               </div>
               <div class="ai-hero-actions">
                 <button id="btn-ai-sync-now" class="btn btn-ai" type="button">🚀 Pesquisar Preços &amp; Atualizar ROIs</button>
@@ -537,7 +537,7 @@
 
             <!-- Sub-navegação da Central IA -->
             <div class="ai-subnav" role="tablist">
-              <button class="ai-subtab active" data-ai-sub="radar" type="button">📡 Radar Diário &amp; ROIs</button>
+              <button class="ai-subtab active" data-ai-sub="radar" type="button">📡 Radar de Preços &amp; ROIs</button>
               <button class="ai-subtab" data-ai-sub="chat" type="button">💬 Consultor CFO IA</button>
               <button class="ai-subtab" data-ai-sub="receipt" type="button">📸 Ler Nota Fiscal</button>
               <button class="ai-subtab" data-ai-sub="lab" type="button">🧪 Laboratório Criativo IA</button>
@@ -550,13 +550,13 @@
             <span id="ai-progress-text">Pesquisando ofertas nos mercados de Florianópolis/SC e auditando com Gemini...</span>
           </div>
 
-          <!-- ===== SUB 1: RADAR DIÁRIO DE PREÇOS & ROIs ===== -->
+          <!-- ===== SUB 1: RADAR DE PREÇOS & ROIs ===== -->
           <div id="ia-sub-radar" class="ai-subpanel active">
-            <!-- Configurações da Automação Diária -->
+            <!-- Configurações da Automação -->
             <div class="config-strip ai-settings-strip">
               <label class="ai-toggle-item">
                 <input id="ai-cfg-auto-apply" type="checkbox" checked />
-                <span><strong>Auto-atualizar insumos</strong> no sync diário (07h)</span>
+                <span><strong>Auto-atualizar insumos</strong> (Seg &amp; Qui às 07h)</span>
               </label>
               <label class="ai-toggle-item">
                 <input id="ai-cfg-protect-margins" type="checkbox" checked />

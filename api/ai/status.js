@@ -6,7 +6,7 @@ import {
   writeGestaoStateBlob,
   DEFAULT_AI_SETTINGS,
 } from '../../lib/blob-store.js';
-import { isGeminiConfigured, FREE_TIER_MODELS } from '../../lib/gemini-client.js';
+import { isGeminiConfigured, COPILOT_MODELS, FAST_BATCH_MODELS } from '../../lib/gemini-client.js';
 import { MARKET_STORES } from '../../lib/market-prices.js';
 
 export async function GET(request) {
@@ -17,13 +17,15 @@ export async function GET(request) {
     const report = await readAiReportBlob();
     return jsonResponse({
       configured: isGeminiConfigured(),
-      models: FREE_TIER_MODELS,
+      models: COPILOT_MODELS,
+      copilotModels: COPILOT_MODELS,
+      fastModels: FAST_BATCH_MODELS,
       stores: MARKET_STORES.map((s) => ({ id: s.id, name: s.name, region: s.region, specialty: s.specialty })),
       schedule: {
         name: 'daily-price-sync',
-        cron: '0 7 * * *',
+        cron: '0 7 * * 1,4',
         timezone: 'America/Sao_Paulo',
-        humanLabel: 'Todos os dias às 07:00 (Brasília)',
+        humanLabel: 'Segundas e Quintas às 07:00 (Brasília)',
       },
       settings: report.settings,
       lastSync: report.lastSync,

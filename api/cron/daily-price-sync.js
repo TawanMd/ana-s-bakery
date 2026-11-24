@@ -5,9 +5,9 @@ import { isGeminiConfigured } from '../../lib/gemini-client.js';
 export const maxDuration = 300;
 
 /**
- * Função privada agendada via Vercel Schedules (todos os dias às 07:00 BRT).
+ * Função privada agendada via Vercel Schedules (Segundas e Quintas às 07:00 BRT).
  * Pesquisa preços de insumos nos mercados de SC & Confeitaria, audita com Gemini AI,
- * atualiza preços unitários, investimentos, ROIs e gera o Briefing Executivo do dia.
+ * atualiza preços unitários, investimentos, ROIs e gera o Briefing Executivo.
  */
 export const POST = handleSchedule(async (metadata) => {
   console.log(

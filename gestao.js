@@ -338,7 +338,7 @@
     },
     ia: {
       title: 'Central IA — Ana\'s Copilot',
-      subtitle: 'Pesquisa diária de preços em SC, atualização automática de ROIs, consultor CFO, leitor de nota fiscal e laboratório criativo',
+      subtitle: 'Pesquisa automática de preços (Seg & Qui às 07h), atualização de ROIs, consultor CFO, leitor de nota fiscal e laboratório criativo',
     },
   };
 

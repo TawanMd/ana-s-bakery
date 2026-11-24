@@ -20,7 +20,7 @@
       maxAutoChangePct: 55,
     },
     schedule: {
-      humanLabel: 'Todos os dias às 07:00 (Brasília)',
+      humanLabel: 'Segundas e Quintas às 07:00 (Brasília)',
     },
     lastSync: null,
     previewSync: null,
@@ -214,7 +214,7 @@
 
     const navBadge = document.getElementById('ai-nav-badge');
     if (navBadge) {
-      navBadge.textContent = s.autoApplyPrices ? '07h' : 'Manual';
+      navBadge.textContent = s.autoApplyPrices ? 'Seg/Qui' : 'Manual';
     }
   }
 
@@ -243,7 +243,7 @@
     const lastSync = aiState.lastSync;
     const syncInfo = lastSync
       ? `Última pesquisa: <strong>${formatDateTimeBR(lastSync.syncedAt)}</strong> (${lastSync.updatedCount} insumos atualizados • ${esc(lastSync.modelUsed)})`
-      : 'Sync diário agendado para <strong>07:00 (Brasília)</strong> • Nenhuma pesquisa executada ainda.';
+      : 'Sync agendado para <strong>Segundas e Quintas às 07:00 (Brasília)</strong> • Nenhuma pesquisa executada ainda.';
 
     if (!briefing) {
       return `
@@ -252,7 +252,7 @@
             <div>
               <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
                 <span class="badge badge-ai">✨ Briefing Executivo IA</span>
-                <span class="badge badge-olive">⏰ Automático às 07:00 BRT</span>
+                <span class="badge badge-olive">⏰ Seg &amp; Qui às 07:00 BRT</span>
               </div>
               <h2 class="card-title">Inteligência Gemini pronta para auditar seus preços e ROIs</h2>
               <p class="card-desc">${syncInfo}</p>
@@ -413,18 +413,19 @@
 
     const modelBadge = document.getElementById('ai-model-badge');
     if (modelBadge) {
-      modelBadge.textContent = `Modelo: ${activeSync?.modelUsed || 'gemini-3.5-flash-lite'}`;
+      const copilotModel = aiState.lastBriefing?.model || 'gemini-3.6-flash';
+      modelBadge.textContent = `Copilot: ${copilotModel}`;
     }
 
     const schedBadge = document.getElementById('ai-schedule-badge');
     if (schedBadge) {
-      schedBadge.textContent = `⏰ ${aiState.schedule?.humanLabel || 'Todos os dias às 07:00 (Brasília)'}`;
+      schedBadge.textContent = `⏰ ${aiState.schedule?.humanLabel || 'Segundas e Quintas às 07:00 (Brasília)'}`;
     }
 
     const descEl = document.getElementById('ai-last-sync-desc');
     if (descEl) {
       if (activeSync) {
-        const trig = activeSync.trigger === 'schedule' ? 'Automático (07h)' : (isPreview ? 'Simulação (não salva)' : 'Manual');
+        const trig = activeSync.trigger === 'schedule' ? 'Automático (Seg/Qui 07h)' : (isPreview ? 'Simulação (não salva)' : 'Manual');
         descEl.innerHTML = `Última auditoria: <strong>${formatDateTimeBR(activeSync.syncedAt)}</strong> • Modo: <strong>${trig}</strong> • ${activeSync.matchedCount}/${activeSync.totalScanned} insumos cotados ao vivo nos mercados SC em ${num((activeSync.durationMs || 0) / 1000, 1)}s.`;
       }
     }
