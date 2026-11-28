@@ -9,15 +9,31 @@
 
   const G = () => window.AnasGestao;
 
+  const DEFAULT_LOCAL_STORE_IDS = [
+    'fort-campeche',
+    'bistek-costeira',
+    'hiperselect',
+    'hippo-centro',
+    'angeloni-centro',
+    'fort-jardim-atlantico',
+    'angeloni-capoeiras',
+    'bistek-abraao',
+  ];
+
   const aiState = {
     configured: true,
     loading: false,
     activeSub: 'radar',
+    hubs: [],
+    stores: [],
     settings: {
       autoApplyPrices: true,
       autoProtectMargins: true,
+      preferFortRancho: true,
+      fortTolerancePct: 8,
       includeEquipmentsCheck: false,
       maxAutoChangePct: 55,
+      enabledStoreIds: [...DEFAULT_LOCAL_STORE_IDS],
     },
     schedule: {
       humanLabel: 'Segundas e Quintas às 07:00 (Brasília)',
@@ -32,6 +48,7 @@
     lastReceipt: null,
     lastGeneratedRecipe: null,
     lastGoalPlan: null,
+    lastImportDraft: null,
   };
 
   function esc(str) {
@@ -133,6 +150,8 @@
       'btn-ai-preview-sync',
       'btn-ai-rollback',
       'btn-ai-chat-send',
+      'btn-ai-import-parse',
+      'btn-ai-import-commit',
       'btn-ai-create-recipe',
       'btn-ai-optimize-goal',
       'btn-ai-generate-mkt',
@@ -182,7 +201,18 @@
     try {
       const data = await apiFetch('/api/ai/status', { method: 'GET' });
       aiState.configured = Boolean(data.configured);
-      if (data.settings) aiState.settings = { ...aiState.settings, ...data.settings };
+      if (Array.isArray(data.hubs)) aiState.hubs = data.hubs;
+      if (Array.isArray(data.stores)) aiState.stores = data.stores;
+      if (data.settings) {
+        const nextEnabled = Array.isArray(data.settings.enabledStoreIds) && data.settings.enabledStoreIds.length
+          ? data.settings.enabledStoreIds
+          : aiState.settings.enabledStoreIds;
+        aiState.settings = {
+          ...aiState.settings,
+          ...data.settings,
+          enabledStoreIds: nextEnabled,
+        };
+      }
       if (data.schedule) aiState.schedule = data.schedule;
       aiState.lastSync = data.lastSync || null;
       aiState.lastBriefing = data.lastBriefing || null;
@@ -205,12 +235,21 @@
     const s = aiState.settings;
     const elApply = document.getElementById('ai-cfg-auto-apply');
     const elMargin = document.getElementById('ai-cfg-protect-margins');
+    const elPreferFort = document.getElementById('ai-cfg-prefer-fort');
+    const elFortTol = document.getElementById('ai-cfg-fort-tol');
     const elEquip = document.getElementById('ai-cfg-check-equip');
     const elMax = document.getElementById('ai-cfg-max-delta');
     if (elApply) elApply.checked = Boolean(s.autoApplyPrices);
     if (elMargin) elMargin.checked = Boolean(s.autoProtectMargins);
+    if (elPreferFort) elPreferFort.checked = s.preferFortRancho !== false;
+    if (elFortTol) {
+      elFortTol.value = String(s.fortTolerancePct ?? 8);
+      elFortTol.disabled = s.preferFortRancho === false;
+    }
     if (elEquip) elEquip.checked = Boolean(s.includeEquipmentsCheck);
     if (elMax) elMax.value = String(s.maxAutoChangePct ?? 55);
+
+    renderStoresHubsPanel();
 
     const navBadge = document.getElementById('ai-nav-badge');
     if (navBadge) {
@@ -218,12 +257,29 @@
     }
   }
 
-  async function saveAiSettings() {
+  async function saveAiSettings(partialOverrides = {}) {
+    const overrides = partialOverrides && !partialOverrides.target && typeof partialOverrides === 'object'
+      ? partialOverrides
+      : {};
+    const checkedStores = Array.from(document.querySelectorAll('#ai-stores-hubs-card .js-ai-store-toggle:checked'))
+      .map((el) => el.value)
+      .filter(Boolean);
+    const enabledStoreIds = Array.isArray(overrides.enabledStoreIds)
+      ? overrides.enabledStoreIds
+      : (checkedStores.length ? checkedStores : (aiState.settings.enabledStoreIds || [...DEFAULT_LOCAL_STORE_IDS]));
+
     const next = {
+      ...aiState.settings,
       autoApplyPrices: Boolean(document.getElementById('ai-cfg-auto-apply')?.checked),
       autoProtectMargins: Boolean(document.getElementById('ai-cfg-protect-margins')?.checked),
+      preferFortRancho: document.getElementById('ai-cfg-prefer-fort')
+        ? Boolean(document.getElementById('ai-cfg-prefer-fort').checked)
+        : aiState.settings.preferFortRancho !== false,
+      fortTolerancePct: Math.max(0, Math.min(25, Number(G().parseLocaleNumber(document.getElementById('ai-cfg-fort-tol')?.value ?? aiState.settings.fortTolerancePct ?? 8)))),
       includeEquipmentsCheck: Boolean(document.getElementById('ai-cfg-check-equip')?.checked),
       maxAutoChangePct: Math.max(10, Math.min(200, Number(G().parseLocaleNumber(document.getElementById('ai-cfg-max-delta')?.value)) || 55)),
+      enabledStoreIds,
+      ...overrides,
     };
     aiState.settings = next;
     syncSettingsInputs();
@@ -236,6 +292,76 @@
     } catch (err) {
       G().showToast(`Erro ao salvar preferências: ${err.message}`);
     }
+  }
+
+  function renderStoresHubsPanel() {
+    const container = document.getElementById('ai-stores-hubs-card');
+    if (!container) return;
+
+    const hubs = Array.isArray(aiState.hubs) ? aiState.hubs : [];
+    const stores = Array.isArray(aiState.stores) ? aiState.stores : [];
+    const enabledSet = new Set(
+      Array.isArray(aiState.settings?.enabledStoreIds) && aiState.settings.enabledStoreIds.length
+        ? aiState.settings.enabledStoreIds
+        : DEFAULT_LOCAL_STORE_IDS,
+    );
+
+    if (!hubs.length || !stores.length) {
+      container.innerHTML = '<div class="card ai-hubs-card"><p class="card-desc" style="margin:0;">Carregando polos e mercados da sua rotina (Tapera, Centro e Estreito)...</p></div>';
+      return;
+    }
+
+    const activeCount = stores.filter((st) => enabledSet.has(st.id)).length;
+    const hubsHtml = hubs.map((hub) => {
+      const hubStores = stores.filter((st) => st.hub === hub.id || (Array.isArray(st.hubs) && st.hubs.includes(hub.id)));
+      return `
+        <div class="ai-hub-col">
+          <div class="ai-hub-head">
+            <strong>${esc(hub.label)}</strong>
+            <span class="ai-hub-addr">${esc(hub.address)}</span>
+          </div>
+          <div class="ai-hub-stores-list">
+            ${hubStores.map((st) => {
+              const checked = enabledSet.has(st.id);
+              const detail = st.distanceHint || st.address || '';
+              return `
+                <label class="ai-store-toggle-pill ${st.isPreferred ? 'is-preferred' : ''} ${checked ? 'is-checked' : ''}">
+                  <input type="checkbox" class="js-ai-store-toggle" value="${esc(st.id)}" ${checked ? 'checked' : ''} />
+                  <div class="ai-store-pill-body">
+                    <div class="ai-store-pill-title">
+                      <strong>${esc(st.shortName || st.name)}</strong>
+                      ${st.isPreferred ? '<span class="badge badge-gold">⭐ Rancho</span>' : ''}
+                    </div>
+                    ${detail ? `<small class="ai-store-pill-addr">${esc(detail)}</small>` : ''}
+                  </div>
+                </label>
+              `;
+            }).join('')}
+          </div>
+          ${hub.note ? `<div class="ai-hub-note">${esc(hub.note)}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="card ai-hubs-card">
+        <div class="card-head-inline" style="margin-bottom:12px;">
+          <div>
+            <h3>📍 Polos de Compra sem Carro — Florianópolis</h3>
+            <p class="card-desc" style="margin-bottom:0;">
+              Apenas os mercados reais mais próximos de casa (CEP 88049-332) e dos dois trabalhos. Ative ou desative onde deseja cotar:
+            </p>
+          </div>
+          <span class="badge badge-olive">${activeCount}/${stores.length} mercados ativos</span>
+        </div>
+        <div class="ai-hubs-grid">
+          ${hubsHtml}
+        </div>
+        <div class="ai-hub-transparency-note">
+          ℹ️ <strong>Sobre Imperatriz (Liberato Bittencourt, 410) e Brasil Atacadista (SC-405):</strong> não possuem catálogo aberto na web (Imperatriz atende via iFood/app fechado e Brasil Atacadista via televendas). Quando comprar lá presencialmente, use <strong>Ler Nota Fiscal</strong> na aba ao lado para atualizar os preços!
+        </div>
+      </div>
+    `;
   }
 
   // ======================== BRIEFING EXECUTIVO (DASHBOARD + CENTRAL IA) ========================
@@ -426,9 +552,11 @@
     if (descEl) {
       if (activeSync) {
         const trig = activeSync.trigger === 'schedule' ? 'Automático (Seg/Qui 07h)' : (isPreview ? 'Simulação (não salva)' : 'Manual');
-        descEl.innerHTML = `Última auditoria: <strong>${formatDateTimeBR(activeSync.syncedAt)}</strong> • Modo: <strong>${trig}</strong> • ${activeSync.matchedCount}/${activeSync.totalScanned} insumos cotados ao vivo nos mercados SC em ${num((activeSync.durationMs || 0) / 1000, 1)}s.`;
+        descEl.innerHTML = `Última auditoria: <strong>${formatDateTimeBR(activeSync.syncedAt)}</strong> • Modo: <strong>${trig}</strong> • ${activeSync.matchedCount}/${activeSync.totalScanned} insumos cotados ao vivo nos mercados da sua rotina (Tapera, Centro e Estreito) em ${num((activeSync.durationMs || 0) / 1000, 1)}s.`;
       }
     }
+
+    renderStoresHubsPanel();
 
     const rollbackBtn = document.getElementById('btn-ai-rollback');
     if (rollbackBtn) {
@@ -501,14 +629,18 @@
     if (routeBox) {
       const route = activeSync?.shoppingRouteByStore || [];
       if (!route.length) {
-        routeBox.innerHTML = '<p class="card-desc">Rode a pesquisa de preços ao vivo para ver em qual mercado de Florianópolis/SC cada item da sua lista sai mais barato.</p>';
+        routeBox.innerHTML = '<p class="card-desc">Rode a pesquisa de preços ao vivo para ver em qual mercado da sua rotina sem carro (Tapera 88049-332, Centro ou Estreito) cada item sai mais vantajoso.</p>';
       } else {
         routeBox.innerHTML = `
           <div class="ai-route-list">
             ${route.map((st) => `
-              <div class="ai-route-card">
+              <div class="ai-route-card ${st.isPreferred ? 'is-preferred' : ''}">
                 <div class="ai-route-head">
-                  <strong>🏪 ${esc(st.store)}</strong>
+                  <div>
+                    <strong>${st.isPreferred ? '⭐' : '🏪'} ${esc(st.store)}</strong>
+                    ${st.hubLabel ? `<span class="badge badge-olive" style="margin-left:6px;">${esc(st.hubLabel)}</span>` : ''}
+                    ${st.address ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">📍 ${esc(st.address)}</div>` : ''}
+                  </div>
                   <span class="badge badge-gold">${st.itemsCount} itens • ${brl(st.totalRS)}</span>
                 </div>
                 <div class="ai-route-items">
@@ -630,13 +762,22 @@
     if (tbody && activeSync && Array.isArray(activeSync.ingredientUpdates)) {
       tbody.innerHTML = activeSync.ingredientUpdates.map((u) => {
         const confCls = u.confidence === 'alta' ? 'badge-olive' : (u.confidence === 'media' ? 'badge-gold' : 'badge-amber');
+        const altOffers = Array.isArray(u.topOffers)
+          ? u.topOffers.filter((o) => o && o.storeId !== u.storeId).slice(0, 2)
+          : [];
+        const altHtml = altOffers.length
+          ? `<div style="font-size:0.72rem; color:var(--text-soft); margin-top:2px;">Outras opções: ${altOffers.map((o) => `${esc(o.store)} (${brl(o.price)})`).join(' • ')}</div>`
+          : '';
+
         const storeHtml = u.matched && u.store
           ? `
             <div>
-              <strong>${esc(u.store)}</strong>
+              <strong>${u.isPreferred ? '⭐ ' : ''}${esc(u.store)}</strong>
+              ${u.storeHubLabel ? `<span class="badge badge-olive" style="margin-left:5px; font-size:0.68rem;">${esc(u.storeHubLabel)}</span>` : ''}
               ${u.productUrl ? `<a href="${esc(u.productUrl)}" target="_blank" rel="noopener noreferrer" class="ai-product-link"> — ${esc(u.matchedProduct)} ↗</a>` : ` — ${esc(u.matchedProduct || '')}`}
             </div>
             <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${esc(u.reason)}</div>
+            ${altHtml}
           `
           : `<span style="font-size:0.8rem; color:var(--text-muted);">${esc(u.reason || 'Sem correspondência online hoje')}</span>`;
 
@@ -673,10 +814,10 @@
     }
 
     const label = ingredientIds
-      ? 'Pesquisando preço ao vivo deste insumo nos mercados de SC...'
+      ? 'Pesquisando preço ao vivo deste insumo nos mercados da rotina (Tapera, Centro e Estreito)...'
       : (mode === 'preview'
-        ? 'Simulando pesquisa ao vivo nos 5 mercados e calculando impacto nos ROIs...'
-        : 'Pesquisando preços ao vivo (Giassi, Bistek, Angeloni, Atacadão, Santo Antônio) e atualizando ROIs com Gemini IA...');
+        ? 'Simulando pesquisa ao vivo nos mercados da sua rotina sem carro e calculando impacto nos ROIs...'
+        : 'Pesquisando preços ao vivo (Fort Campeche/Estreito, Bistek, Angeloni, Hiper Select e Hippo) e atualizando ROIs com Gemini IA...');
 
     setBusy(true, label);
     try {
@@ -1040,6 +1181,950 @@
     }
   }
 
+  // ======================== IMPORTADOR & PRECIFICADOR DE RECEITAS (IA) ========================
+  function round2(val) {
+    return Math.round((Number(val || 0) + Number.EPSILON) * 100) / 100;
+  }
+
+  function round4(val) {
+    return Math.round((Number(val || 0) + Number.EPSILON) * 10000) / 10000;
+  }
+
+  function isSmallUnitSub(sub) {
+    const u = String(sub?.unidadeRendimento || '').trim().toLowerCase();
+    const raw = Number(sub?._rawCustoUnitario ?? sub?.custoUnitario ?? 0);
+    return u === 'g' || u === 'ml' || (raw > 0 && raw < 1);
+  }
+
+  function formatSubUnitCostText(sub) {
+    const raw = Number(sub?._rawCustoUnitario ?? sub?.custoUnitario ?? 0);
+    const dec = isSmallUnitSub(sub) ? 4 : 2;
+    return `${brl(raw, dec)}/${sub?.unidadeRendimento || 'un'}`;
+  }
+
+  function normalizeName(str) {
+    return String(str || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function makeSlug(str, maxLen = 20) {
+    return normalizeName(str)
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, maxLen) || 'item';
+  }
+
+  function findExistingIngredientByName(nome, ingredients) {
+    const target = normalizeName(nome);
+    if (!target) return null;
+    return (ingredients || []).find((i) => normalizeName(i.nome) === target) || null;
+  }
+
+  function computeChannelPricingLocal(custoUnitario, precoDireto, config) {
+    const safeCost = Math.max(0, Number(custoUnitario || 0));
+    const safeDirect = Math.max(0, Number(precoDireto || 0));
+    if (typeof calculateChannelPricing === 'function') {
+      const ch = calculateChannelPricing(safeCost, safeDirect, config || {});
+      return {
+        custoUnitario: round2(ch.custoUnitario),
+        precoDireto: round2(ch.precoDireto),
+        lucroDireto: round2(ch.lucroDireto),
+        margemDiretaPct: round2(ch.margemDiretaPct),
+        roiUnitarioPct: round2(ch.roiUnitarioPct),
+        precoMinimoRecomendado: round2(ch.precoMinimoRecomendado),
+        precoIfoodBasico: round2(ch.ifoodBasico?.preco || 0),
+        precoIfoodEntrega: round2(ch.ifoodEntrega?.preco || 0),
+        status: ch.status || 'saudavel',
+      };
+    }
+
+    const taxaBasico = Number(config?.taxaIfoodBasico || 15.2) / 100;
+    const taxaEntrega = Number(config?.taxaIfoodEntrega || 26.2) / 100;
+    const margemMin = Number(config?.margemMinima || 35);
+    const lucroDireto = safeDirect - safeCost;
+    const margemDiretaPct = safeDirect > 0 ? (lucroDireto / safeDirect) * 100 : 0;
+    const roiUnitarioPct = safeCost > 0 ? (lucroDireto / safeCost) * 100 : 0;
+    const precoIfoodBasico = taxaBasico < 1 ? safeDirect / (1 - taxaBasico) : safeDirect;
+    const precoIfoodEntrega = taxaEntrega < 1 ? safeDirect / (1 - taxaEntrega) : safeDirect;
+    const margemFrac = margemMin / 100;
+    const precoMinimoRecomendado = margemFrac < 1 ? safeCost / (1 - margemFrac) : safeCost * 2;
+    let status = 'saudavel';
+    if (lucroDireto <= 0) status = 'prejuizo';
+    else if (margemDiretaPct < margemMin) status = 'baixa';
+
+    return {
+      custoUnitario: round2(safeCost),
+      precoDireto: round2(safeDirect),
+      lucroDireto: round2(lucroDireto),
+      margemDiretaPct: round2(margemDiretaPct),
+      roiUnitarioPct: round2(roiUnitarioPct),
+      precoMinimoRecomendado: round2(precoMinimoRecomendado),
+      precoIfoodBasico: round2(precoIfoodBasico),
+      precoIfoodEntrega: round2(precoIfoodEntrega),
+      status,
+    };
+  }
+
+  function buildVirtualImportState(draft) {
+    const state = G().getState();
+    const virtualIngredients = [...(state.ingredients || [])];
+
+    for (const novo of draft.novosInsumos || []) {
+      if (novo._matchedExistingId) {
+        const existing = (state.ingredients || []).find((i) => i.id === novo._matchedExistingId);
+        if (existing) {
+          virtualIngredients.push({ ...existing, id: novo.tempId });
+          continue;
+        }
+      }
+      if (!novo._included) continue;
+      virtualIngredients.push({
+        id: novo.tempId,
+        nome: novo.nome,
+        categoria: novo.categoria || 'Outros',
+        preco: Math.max(0, Number(novo.preco || 0)),
+        quantidade: Math.max(0.01, Number(novo.quantidade || 100)),
+        unidade: novo.unidade || 'g',
+        obs: novo.obs || '',
+      });
+    }
+
+    const virtualRecipes = [
+      ...(state.recipes || []),
+      ...(draft.subreceitas || []).map((s) => ({ ...s, id: s.tempId })),
+      ...(draft.produtos || []).map((p) => ({ ...p, id: p.tempId })),
+    ];
+
+    return {
+      config: state.config || { margemMinima: 35, taxaIfoodBasico: 15.2, taxaIfoodEntrega: 26.2 },
+      ingredients: virtualIngredients,
+      recipes: virtualRecipes,
+    };
+  }
+
+  function recomputeImportDraftCosts(draft) {
+    if (!draft) return;
+    const virtualState = buildVirtualImportState(draft);
+    const hasEngine = typeof calculateRecipeCost === 'function';
+
+    for (const sub of draft.subreceitas || []) {
+      if (hasEngine && Array.isArray(sub.itens) && sub.itens.length > 0) {
+        const calc = calculateRecipeCost(sub.tempId, virtualState);
+        sub.custoTotal = round2(calc.custoTotal);
+        sub._rawCustoUnitario = Number(calc.custoUnitario || 0);
+        sub.custoUnitario = isSmallUnitSub(sub) ? round4(calc.custoUnitario) : round2(calc.custoUnitario);
+        sub._breakdown = calc.breakdown || [];
+      } else {
+        sub.custoTotal = round2(sub.custoTotal || 0);
+        const fallbackRaw = Number(sub.rendimento || 0) > 0 && Number(sub.custoTotal || 0) > 0
+          ? Number(sub.custoTotal) / Number(sub.rendimento)
+          : Number(sub._rawCustoUnitario ?? sub.custoUnitario ?? 0);
+        sub._rawCustoUnitario = fallbackRaw;
+        sub.custoUnitario = isSmallUnitSub(sub) ? round4(fallbackRaw) : round2(fallbackRaw);
+        sub._breakdown = [];
+      }
+    }
+
+    for (const prod of draft.produtos || []) {
+      let custoTotalLote = round2(prod.pricingPreview?.custoTotalLote || 0);
+      let custoUnitario = round2(prod.pricingPreview?.custoUnitario || 0);
+      if (hasEngine && Array.isArray(prod.itens) && prod.itens.length > 0) {
+        const calc = calculateRecipeCost(prod.tempId, virtualState);
+        custoTotalLote = round2(calc.custoTotal);
+        custoUnitario = round2(calc.custoUnitario);
+        prod._breakdown = calc.breakdown || [];
+      } else {
+        prod._breakdown = [];
+      }
+
+      const precoDireto = Math.max(0, round2(prod.precoVendaDireta));
+      const ch = computeChannelPricingLocal(custoUnitario, precoDireto, virtualState.config);
+      prod.pricingPreview = {
+        ...ch,
+        custoTotalLote,
+      };
+    }
+  }
+
+  function getImportStatusClasses(status) {
+    if (status === 'prejuizo') {
+      return { badge: 'badge-terracotta', text: 'terracotta', label: 'Prejuízo' };
+    }
+    if (status === 'baixa') {
+      return { badge: 'badge-amber', text: 'amber', label: 'Margem baixa' };
+    }
+    return { badge: 'badge-olive', text: 'olive', label: 'Saudável' };
+  }
+
+  function resolveImportItemDisplay(item, draft, state) {
+    const qty = Number(item.quantidade || 0);
+    if (item.tipo === 'insumo') {
+      const novo = (draft.novosInsumos || []).find((n) => n.tempId === item.refId);
+      if (novo) {
+        if (novo._matchedExistingId) {
+          const ex = (state.ingredients || []).find((i) => i.id === novo._matchedExistingId);
+          if (ex) {
+            const uCost = ex.quantidade > 0 ? Number(ex.preco || 0) / Number(ex.quantidade) : 0;
+            return {
+              nome: ex.nome,
+              unidade: ex.unidade || 'g',
+              tag: 'Estoque',
+              tagCls: 'tag-stock',
+              cost: round2(uCost * qty),
+              excluded: false,
+            };
+          }
+        }
+        const excluded = !novo._included;
+        const uCost = !excluded && novo.quantidade > 0 ? Number(novo.preco || 0) / Number(novo.quantidade) : 0;
+        return {
+          nome: novo.nome,
+          unidade: novo.unidade || 'g',
+          tag: excluded ? 'Excluído' : 'Novo',
+          tagCls: excluded ? 'tag-excluded' : 'tag-new',
+          cost: round2(uCost * qty),
+          excluded,
+        };
+      }
+      const ex = (state.ingredients || []).find((i) => i.id === item.refId);
+      if (ex) {
+        const uCost = ex.quantidade > 0 ? Number(ex.preco || 0) / Number(ex.quantidade) : 0;
+        return {
+          nome: ex.nome,
+          unidade: ex.unidade || 'g',
+          tag: ex.categoria === 'Embalagens' ? 'Embalagem' : '',
+          tagCls: 'tag-pack',
+          cost: round2(uCost * qty),
+          excluded: false,
+        };
+      }
+      return { nome: item.refId, unidade: 'g', tag: '', tagCls: '', cost: 0, excluded: false };
+    }
+
+    const newSub = (draft.subreceitas || []).find((s) => s.tempId === item.refId);
+    if (newSub) {
+      const rawUnit = Number.isFinite(newSub._rawCustoUnitario)
+        ? newSub._rawCustoUnitario
+        : (Number(newSub.rendimento || 0) > 0 && Number(newSub.custoTotal || 0) > 0
+          ? Number(newSub.custoTotal) / Number(newSub.rendimento)
+          : Number(newSub.custoUnitario || 0));
+      return {
+        nome: newSub.nome,
+        unidade: newSub.unidadeRendimento || 'un',
+        tag: 'Nova Base',
+        tagCls: 'tag-sub',
+        cost: round2(rawUnit * qty),
+        excluded: false,
+      };
+    }
+    const exSub = (state.recipes || []).find((r) => r.id === item.refId);
+    if (exSub) {
+      let subUnit = 0;
+      if (typeof calculateRecipeCost === 'function') {
+        subUnit = calculateRecipeCost(exSub.id, state).custoUnitario;
+      }
+      return {
+        nome: exSub.nome,
+        unidade: exSub.unidadeRendimento || 'un',
+        tag: 'Base',
+        tagCls: 'tag-sub',
+        cost: round2(subUnit * qty),
+        excluded: false,
+      };
+    }
+    return { nome: item.refId, unidade: 'un', tag: 'Base', tagCls: 'tag-sub', cost: 0, excluded: false };
+  }
+
+  function buildImportCommitSummaryText(draft) {
+    if (!draft) return '';
+    const newIngs = (draft.novosInsumos || []).filter((n) => n._included && !n._matchedExistingId).length;
+    const reusedIngs = (draft.novosInsumos || []).filter((n) => Boolean(n._matchedExistingId)).length;
+    const subs = (draft.subreceitas || []).length;
+    const prods = (draft.produtos || []).length;
+    const parts = [];
+    if (newIngs > 0) parts.push(`<strong>${newIngs}</strong> novo(s) insumo(s)`);
+    if (reusedIngs > 0) parts.push(`<strong>${reusedIngs}</strong> reutilizado(s) do estoque`);
+    if (subs > 0) parts.push(`<strong>${subs}</strong> base(s)`);
+    if (prods > 0) parts.push(`<strong>${prods}</strong> produto(s) final(is)`);
+    return parts.length
+      ? `Pronto para importar: ${parts.join(' • ')}.`
+      : 'Nenhum novo item selecionado para importação.';
+  }
+
+  function updateImportDraftDomInPlace() {
+    const draft = aiState.lastImportDraft;
+    const out = document.getElementById('ai-import-output');
+    if (!draft || !out) return;
+    const state = G().getState();
+    const margemMin = Number(state.config?.margemMinima || 35);
+
+    // 1. Atualiza custo unitário de cada novo insumo
+    (draft.novosInsumos || []).forEach((n, idx) => {
+      const effectivePrice = n._matchedExistingId ? Number(n._matchedExistingPreco || 0) : Number(n.preco || 0);
+      const effectiveQty = n._matchedExistingId ? Number(n._matchedExistingQtd || 1) : Number(n.quantidade || 1);
+      const effectiveUnit = n._matchedExistingId ? (n._matchedExistingUnidade || n.unidade) : n.unidade;
+      const unitCost = effectiveQty > 0 ? effectivePrice / effectiveQty : 0;
+      const uEl = out.querySelector(`[data-ing-unit-cost="${idx}"]`);
+      if (uEl) uEl.textContent = `${brl(unitCost, 4)}/${effectiveUnit}`;
+    });
+
+    // 2. Atualiza custos das bases / sub-receitas e seus itens
+    (draft.subreceitas || []).forEach((sub, sIdx) => {
+      const totEl = out.querySelector(`[data-sub-total="${sIdx}"]`);
+      const unitEl = out.querySelector(`[data-sub-unit="${sIdx}"]`);
+      if (totEl) totEl.textContent = brl(sub.custoTotal);
+      if (unitEl) unitEl.textContent = formatSubUnitCostText(sub);
+
+      (sub.itens || []).forEach((it, iIdx) => {
+        const meta = resolveImportItemDisplay(it, draft, state);
+        const itemCostEl = out.querySelector(`[data-sub-item-cost="${sIdx}-${iIdx}"]`);
+        const itemRowEl = out.querySelector(`[data-sub-item-row="${sIdx}-${iIdx}"]`);
+        if (itemCostEl) itemCostEl.textContent = meta.excluded ? 'Excluído' : brl(meta.cost);
+        if (itemRowEl) itemRowEl.classList.toggle('is-excluded', meta.excluded);
+      });
+    });
+
+    // 3. Atualiza custos, lucro, margem, ROI e preços iFood dos produtos finais
+    (draft.produtos || []).forEach((prod, pIdx) => {
+      const pv = prod.pricingPreview || {};
+      const st = getImportStatusClasses(pv.status);
+
+      const costEl = out.querySelector(`[data-prod-cost="${pIdx}"]`);
+      const batchEl = out.querySelector(`[data-prod-batch-cost="${pIdx}"]`);
+      const minEl = out.querySelector(`[data-prod-min-hint="${pIdx}"]`);
+      const lucroEl = out.querySelector(`[data-prod-lucro="${pIdx}"]`);
+      const margemEl = out.querySelector(`[data-prod-margem="${pIdx}"]`);
+      const roiEl = out.querySelector(`[data-prod-roi="${pIdx}"]`);
+      const ifbEl = out.querySelector(`[data-prod-ifood-basico="${pIdx}"]`);
+      const ifeEl = out.querySelector(`[data-prod-ifood-entrega="${pIdx}"]`);
+
+      if (costEl) costEl.textContent = brl(pv.custoUnitario);
+      if (batchEl) {
+        batchEl.textContent = Number(prod.rendimento || 1) > 1
+          ? `Lote (${G().formatInputNumber(prod.rendimento)}): ${brl(pv.custoTotalLote)}`
+          : `Mín. (${num(margemMin, 0)}%): ${brl(pv.precoMinimoRecomendado)}`;
+      }
+      if (minEl) minEl.textContent = `Mín (${num(margemMin, 0)}%): ${brl(pv.precoMinimoRecomendado)}`;
+      if (lucroEl) {
+        lucroEl.textContent = brl(pv.lucroDireto);
+        lucroEl.className = `tabular ai-import-lucro ${st.text}`;
+      }
+      if (margemEl) {
+        margemEl.textContent = `${num(pv.margemDiretaPct, 1)}%`;
+        margemEl.className = `badge ${st.badge}`;
+      }
+      if (roiEl) {
+        roiEl.textContent = `${num(pv.roiUnitarioPct, 1)}%`;
+        roiEl.className = `tabular ai-import-roi ${Number(pv.roiUnitarioPct || 0) >= 0 ? 'olive' : 'terracotta'}`;
+      }
+      if (ifbEl) ifbEl.textContent = brl(pv.precoIfoodBasico);
+      if (ifeEl) ifeEl.textContent = brl(pv.precoIfoodEntrega);
+
+      (prod.itens || []).forEach((it, iIdx) => {
+        const meta = resolveImportItemDisplay(it, draft, state);
+        const itemCostEl = out.querySelector(`[data-prod-item-cost="${pIdx}-${iIdx}"]`);
+        const itemRowEl = out.querySelector(`[data-prod-item-row="${pIdx}-${iIdx}"]`);
+        if (itemCostEl) itemCostEl.textContent = meta.excluded ? 'Excluído' : brl(meta.cost);
+        if (itemRowEl) itemRowEl.classList.toggle('is-excluded', meta.excluded);
+      });
+    });
+
+    const summaryEl = document.getElementById('ai-import-commit-summary');
+    if (summaryEl) summaryEl.innerHTML = buildImportCommitSummaryText(draft);
+  }
+
+  function renderImportPreview() {
+    const out = document.getElementById('ai-import-output');
+    const draft = aiState.lastImportDraft;
+    if (!out) return;
+    if (!draft) {
+      out.innerHTML = '';
+      return;
+    }
+
+    const state = G().getState();
+    const taxaBasico = Number(state.config?.taxaIfoodBasico || 15.2);
+    const taxaEntrega = Number(state.config?.taxaIfoodEntrega || 26.2);
+    const margemMin = Number(state.config?.margemMinima || 35);
+
+    const novos = draft.novosInsumos || [];
+    const subs = draft.subreceitas || [];
+    const prods = draft.produtos || [];
+
+    const novosHtml = novos.length ? `
+      <div class="ai-import-section">
+        <div class="ai-import-section-head">
+          <div>
+            <h4 class="ai-import-section-title">📦 Novos Insumos (${novos.length})</h4>
+            <p class="ai-import-section-sub">Revise ou edite o preço da embalagem — todos os custos e lucros abaixo recalculam ao vivo.</p>
+          </div>
+        </div>
+
+        <div class="ai-import-ing-list">
+          <div class="ai-import-ing-head">
+            <span>Usar</span>
+            <span>Insumo &amp; Embalagem</span>
+            <span>Categoria</span>
+            <span class="td-right">Preço Emb. (R$)</span>
+            <span class="td-right">Custo Unit.</span>
+          </div>
+          ${novos.map((n, idx) => {
+            const matched = Boolean(n._matchedExistingId);
+            const effectivePrice = matched ? Number(n._matchedExistingPreco || 0) : Number(n.preco || 0);
+            const effectiveQty = matched ? Number(n._matchedExistingQtd || 1) : Number(n.quantidade || 1);
+            const effectiveUnit = matched ? (n._matchedExistingUnidade || n.unidade) : n.unidade;
+            const unitCost = effectiveQty > 0 ? effectivePrice / effectiveQty : 0;
+            const lq = n.liveQuote && typeof n.liveQuote === 'object' ? n.liveQuote : null;
+            const lqTitle = lq ? (lq.title || lq.matchedProduct || '') : '';
+            const lqUrl = lq ? (lq.url || lq.productUrl || '') : '';
+
+            return `
+              <div class="ai-import-ing-row ${!n._included && !matched ? 'is-excluded' : ''}" data-ing-row="${idx}">
+                <div class="ai-import-ing-check">
+                  <input type="checkbox" class="js-import-ing-toggle" data-ing-idx="${idx}" ${n._included ? 'checked' : ''} ${matched ? 'disabled title="Já existe no estoque — será reutilizado automaticamente"' : ''} aria-label="Incluir ${esc(n.nome)}" />
+                </div>
+                <div class="ai-import-ing-info">
+                  <div class="ai-import-ing-name-line">
+                    <strong>${esc(n.nome)}</strong>
+                    ${matched
+                      ? `<span class="badge badge-olive">✓ Já no estoque (${esc(n._matchedExistingName)})</span>`
+                      : '<span class="badge badge-gold">Novo insumo</span>'}
+                  </div>
+                  <div class="ai-import-ing-meta">
+                    Emb.: <strong>${G().formatInputNumber(effectiveQty)} ${esc(effectiveUnit)}</strong>${n.obs ? ` • ${esc(n.obs)}` : ''}
+                  </div>
+                  ${lq ? `
+                    <div class="ai-import-live-quote">
+                      <span>🏪 ${esc(lq.store || 'Cotação SC')}${lqTitle ? ` — ${esc(lqTitle)}` : ''}</span>
+                      ${lqUrl ? `<a href="${esc(lqUrl)}" target="_blank" rel="noopener noreferrer" class="ai-product-link">oferta ↗</a>` : ''}
+                    </div>
+                  ` : ''}
+                </div>
+                <div class="ai-import-ing-cat">
+                  <span class="badge badge-gold">${esc(n.categoria || 'Outros')}</span>
+                </div>
+                <div class="ai-import-ing-price-cell">
+                  <span class="ai-import-mobile-lbl">Preço (R$)</span>
+                  <input type="text" inputmode="decimal" class="input-inline input-num js-import-ing-price" data-ing-idx="${idx}" value="${num(effectivePrice, 2)}" ${matched || !n._included ? 'disabled' : ''} aria-label="Preço de ${esc(n.nome)}" />
+                </div>
+                <div class="ai-import-ing-unit-cell">
+                  <span class="ai-import-mobile-lbl">Custo unit.</span>
+                  <span class="tabular ai-import-unit-cost" data-ing-unit-cost="${idx}">${brl(unitCost, 4)}/${esc(effectiveUnit)}</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    ` : '';
+
+    const subsHtml = subs.length ? `
+      <div class="ai-import-section">
+        <div class="ai-import-section-head">
+          <div>
+            <h4 class="ai-import-section-title">🥣 Bases &amp; Sub-receitas (${subs.length})</h4>
+            <p class="ai-import-section-sub">Massas e recheios compartilhados — clique para conferir ingredientes e modo de preparo.</p>
+          </div>
+        </div>
+
+        <div class="ai-import-subs-grid">
+          ${subs.map((sub, sIdx) => `
+            <details class="ai-import-sub-card" data-sub-idx="${sIdx}">
+              <summary class="ai-import-sub-summary">
+                <div class="ai-import-sub-main">
+                  <div class="ai-import-sub-title-line">
+                    <span class="badge badge-gold">🥣 Base</span>
+                    <strong>${esc(sub.nome)}</strong>
+                  </div>
+                  <div class="ai-import-sub-meta">
+                    Rende ${G().formatInputNumber(sub.rendimento)} ${esc(sub.unidadeRendimento || 'un')}${sub.pesoReferencia ? ` • ${esc(sub.pesoReferencia)}` : ''} • Indiretos ${num(sub.custosIndiretosPct || 0, 0)}%
+                  </div>
+                </div>
+                <div class="ai-import-sub-costs">
+                  <div>
+                    <span class="ai-import-cost-lbl">Lote</span>
+                    <strong class="tabular" data-sub-total="${sIdx}">${brl(sub.custoTotal)}</strong>
+                  </div>
+                  <div>
+                    <span class="ai-import-cost-lbl">Unitário</span>
+                    <strong class="tabular" data-sub-unit="${sIdx}">${brl(Number(sub._rawCustoUnitario ?? sub.custoUnitario ?? 0), isSmallUnitSub(sub) ? 4 : 2)}/${esc(sub.unidadeRendimento || 'un')}</strong>
+                  </div>
+                </div>
+              </summary>
+
+              <div class="ai-import-sub-body">
+                <div class="ai-import-sub-block-title">Ingredientes (${(sub.itens || []).length})</div>
+                <ul class="ai-import-items-list">
+                  ${(sub.itens || []).map((it, iIdx) => {
+                    const meta = resolveImportItemDisplay(it, draft, state);
+                    return `
+                      <li class="ai-import-item-line ${meta.excluded ? 'is-excluded' : ''}" data-sub-item-row="${sIdx}-${iIdx}">
+                        <span>
+                          <strong>${G().formatInputNumber(it.quantidade)} ${esc(meta.unidade)}</strong> • ${esc(meta.nome)}
+                          ${meta.tag ? `<span class="ai-import-mini-tag ${meta.tagCls}">${esc(meta.tag)}</span>` : ''}
+                        </span>
+                        <span class="tabular ai-import-item-cost" data-sub-item-cost="${sIdx}-${iIdx}">${meta.excluded ? 'Excluído' : brl(meta.cost)}</span>
+                      </li>
+                    `;
+                  }).join('') || '<li class="ai-import-item-line"><span>Sem itens vinculados.</span></li>'}
+                </ul>
+                ${Array.isArray(sub.passos) && sub.passos.length ? `
+                  <div class="ai-import-sub-block-title" style="margin-top:10px;">Modo de Preparo (${sub.passos.length} passos)</div>
+                  <ol class="recipe-steps-list">
+                    ${sub.passos.map((p) => `<li>${esc(p)}</li>`).join('')}
+                  </ol>
+                ` : ''}
+              </div>
+            </details>
+          `).join('')}
+        </div>
+      </div>
+    ` : '';
+
+    const prodsHtml = prods.length ? `
+      <div class="ai-import-section">
+        <div class="ai-import-section-head">
+          <div>
+            <h4 class="ai-import-section-title">🧁 Produtos Finais &amp; Tabela de Precificação (${prods.length})</h4>
+            <p class="ai-import-section-sub">Edite o <strong>Preço Direto</strong> inline para recalcular Lucro, Margem %, ROI % e preços iFood instantaneamente.</p>
+          </div>
+        </div>
+
+        <div class="ai-import-prods-wrap">
+          <div class="ai-import-prod-table-head">
+            <span>Produto Final</span>
+            <span class="td-right">Custo Unit.</span>
+            <span class="td-right">Preço Direto (R$)</span>
+            <span class="td-right">Lucro &amp; Margem</span>
+            <span class="td-right">ROI Unit.</span>
+            <span class="td-right">iFood Básico</span>
+            <span class="td-right">iFood Entrega</span>
+          </div>
+
+          ${prods.map((prod, pIdx) => {
+            const pv = prod.pricingPreview || {};
+            const st = getImportStatusClasses(pv.status);
+            return `
+              <div class="ai-import-prod-item" data-prod-idx="${pIdx}">
+                <div class="ai-import-prod-row">
+                  <div class="ai-import-prod-col-name">
+                    <div class="ai-import-prod-name-row">
+                      <span class="badge badge-olive">🧁 Produto</span>
+                      <strong class="ai-import-prod-name">${esc(prod.nome)}</strong>
+                    </div>
+                    <div class="ai-import-prod-meta">
+                      Rende ${G().formatInputNumber(prod.rendimento)} ${esc(prod.unidadeRendimento || 'un')}${prod.pesoReferencia ? ` • ${esc(prod.pesoReferencia)}` : ''}
+                    </div>
+                  </div>
+
+                  <div class="ai-import-metric-cell">
+                    <span class="ai-import-mobile-lbl">Custo Unit.</span>
+                    <strong class="tabular" data-prod-cost="${pIdx}">${brl(pv.custoUnitario)}</strong>
+                    <span class="ai-import-cell-sub tabular" data-prod-batch-cost="${pIdx}">
+                      ${Number(prod.rendimento || 1) > 1
+                        ? `Lote (${G().formatInputNumber(prod.rendimento)}): ${brl(pv.custoTotalLote)}`
+                        : `Mín. (${num(margemMin, 0)}%): ${brl(pv.precoMinimoRecomendado)}`}
+                    </span>
+                  </div>
+
+                  <div class="ai-import-metric-cell ai-import-price-cell">
+                    <span class="ai-import-mobile-lbl">Preço Direto (R$)</span>
+                    <input type="text" inputmode="decimal" class="input-inline input-num ai-import-price-input js-import-prod-price" data-prod-idx="${pIdx}" value="${num(prod.precoVendaDireta, 2)}" aria-label="Preço Direto de ${esc(prod.nome)}" />
+                    <span class="ai-import-cell-sub tabular" data-prod-min-hint="${pIdx}">Mín (${num(margemMin, 0)}%): ${brl(pv.precoMinimoRecomendado)}</span>
+                  </div>
+
+                  <div class="ai-import-metric-cell">
+                    <span class="ai-import-mobile-lbl">Lucro &amp; Margem</span>
+                    <strong class="tabular ai-import-lucro ${st.text}" data-prod-lucro="${pIdx}">${brl(pv.lucroDireto)}</strong>
+                    <span class="badge ${st.badge}" data-prod-margem="${pIdx}">${num(pv.margemDiretaPct, 1)}%</span>
+                  </div>
+
+                  <div class="ai-import-metric-cell">
+                    <span class="ai-import-mobile-lbl">ROI Unit.</span>
+                    <strong class="tabular ai-import-roi ${Number(pv.roiUnitarioPct || 0) >= 0 ? 'olive' : 'terracotta'}" data-prod-roi="${pIdx}">${num(pv.roiUnitarioPct, 1)}%</strong>
+                    <span class="ai-import-cell-sub">Retorno s/ custo</span>
+                  </div>
+
+                  <div class="ai-import-metric-cell">
+                    <span class="ai-import-mobile-lbl">iFood Básico</span>
+                    <strong class="tabular" data-prod-ifood-basico="${pIdx}">${brl(pv.precoIfoodBasico)}</strong>
+                    <span class="ai-import-cell-sub">Taxa ${num(taxaBasico, 1)}%</span>
+                  </div>
+
+                  <div class="ai-import-metric-cell">
+                    <span class="ai-import-mobile-lbl">iFood Entrega</span>
+                    <strong class="tabular" data-prod-ifood-entrega="${pIdx}">${brl(pv.precoIfoodEntrega)}</strong>
+                    <span class="ai-import-cell-sub">Taxa ${num(taxaEntrega, 1)}%</span>
+                  </div>
+                </div>
+
+                <details class="ai-import-prod-details">
+                  <summary class="ai-import-prod-details-summary">
+                    <span>📋 Ver ingredientes (${(prod.itens || []).length}) e modo de preparo (${(prod.passos || []).length} passos)</span>
+                    ${prod.justificativaComercial ? `<span class="ai-import-just-preview">${esc(prod.justificativaComercial)}</span>` : ''}
+                  </summary>
+                  <div class="ai-import-prod-details-body">
+                    ${prod.justificativaComercial ? `<p class="ai-import-just-full">💡 <strong>Estratégia comercial:</strong> ${esc(prod.justificativaComercial)}</p>` : ''}
+                    <div class="ai-import-details-cols">
+                      <div>
+                        <div class="ai-import-sub-block-title">Composição da Ficha (${(prod.itens || []).length})</div>
+                        <ul class="ai-import-items-list">
+                          ${(prod.itens || []).map((it, iIdx) => {
+                            const meta = resolveImportItemDisplay(it, draft, state);
+                            return `
+                              <li class="ai-import-item-line ${meta.excluded ? 'is-excluded' : ''}" data-prod-item-row="${pIdx}-${iIdx}">
+                                <span>
+                                  <strong>${G().formatInputNumber(it.quantidade)} ${esc(meta.unidade)}</strong> • ${esc(meta.nome)}
+                                  ${meta.tag ? `<span class="ai-import-mini-tag ${meta.tagCls}">${esc(meta.tag)}</span>` : ''}
+                                </span>
+                                <span class="tabular ai-import-item-cost" data-prod-item-cost="${pIdx}-${iIdx}">${meta.excluded ? 'Excluído' : brl(meta.cost)}</span>
+                              </li>
+                            `;
+                          }).join('') || '<li class="ai-import-item-line"><span>Sem itens vinculados.</span></li>'}
+                        </ul>
+                      </div>
+                      ${Array.isArray(prod.passos) && prod.passos.length ? `
+                        <div>
+                          <div class="ai-import-sub-block-title">Modo de Preparo (${prod.passos.length} passos)</div>
+                          <ol class="recipe-steps-list">
+                            ${prod.passos.map((p) => `<li>${esc(p)}</li>`).join('')}
+                          </ol>
+                        </div>
+                      ` : ''}
+                    </div>
+                  </div>
+                </details>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    ` : '';
+
+    out.innerHTML = `
+      <div class="ai-import-preview-shell">
+        <div class="ai-import-summary-bar">
+          <div style="flex:1; min-width:220px;">
+            <div class="ai-import-summary-badges">
+              <span class="badge badge-ai">✨ ${esc(draft.model || 'Gemini IA')}</span>
+              <span class="badge badge-gold">Margem alvo: ${num(draft.targetMargin || 50, 0)}%</span>
+              ${novos.length ? `<span class="badge badge-gold">${novos.length} insumo(s)</span>` : ''}
+              ${subs.length ? `<span class="badge badge-gold">${subs.length} base(s)</span>` : ''}
+              ${prods.length ? `<span class="badge badge-olive">${prods.length} produto(s)</span>` : ''}
+            </div>
+            <p class="ai-import-summary-text">${esc(draft.summary || 'Receitas analisadas e precificadas com sucesso. Revise os valores abaixo antes de importar.')}</p>
+          </div>
+        </div>
+
+        ${novosHtml}
+        ${subsHtml}
+        ${prodsHtml}
+
+        <div class="ai-import-footer">
+          <div id="ai-import-commit-summary" class="ai-import-commit-summary">
+            ${buildImportCommitSummaryText(draft)}
+          </div>
+          <div class="ai-import-footer-actions">
+            <button id="btn-ai-import-clear" class="btn btn-secondary" type="button">Limpar</button>
+            <button id="btn-ai-import-commit" class="btn btn-primary" type="button">✓ Importar Tudo para Estoque &amp; Fichas Técnicas</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  async function parseImportRecipes() {
+    if (aiState.loading) return;
+    const ta = document.getElementById('ai-import-raw-text');
+    const rawText = (ta?.value || '').trim();
+    if (!rawText) {
+      G().showToast('Cole o texto da receita ou conversa de WhatsApp primeiro!');
+      ta?.focus();
+      return;
+    }
+
+    const marginRaw = G().parseLocaleNumber(document.getElementById('ai-import-margin')?.value || 50);
+    const targetMargin = Math.max(20, Math.min(80, Number.isFinite(marginRaw) && marginRaw > 0 ? marginRaw : 50));
+    const livePriceNewIngredients = Boolean(document.getElementById('ai-import-live-prices')?.checked);
+    const out = document.getElementById('ai-import-output');
+
+    setBusy(
+      true,
+      livePriceNewIngredients
+        ? 'Analisando receita com Gemini IA e cotando novos insumos ao vivo nos mercados SC...'
+        : 'Analisando texto, estruturando fichas técnicas e calculando precificação com Gemini IA...',
+    );
+
+    try {
+      const state = G().getState();
+      const res = await apiFetch('/api/ai/tools', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'import_recipes',
+          rawText,
+          targetMargin,
+          livePriceNewIngredients,
+          state,
+        }),
+      });
+
+      const novosInsumos = (Array.isArray(res.novosInsumos) ? res.novosInsumos : []).map((n, idx) => {
+        const matched = findExistingIngredientByName(n.nome, state.ingredients);
+        return {
+          tempId: String(n.tempId || `new-ing-${idx + 1}`),
+          nome: String(n.nome || `Insumo ${idx + 1}`).trim(),
+          categoria: String(n.categoria || 'Outros').trim(),
+          preco: Math.max(0, round2(n.preco)),
+          quantidade: Math.max(0.01, Number(n.quantidade || 100)),
+          unidade: ['g', 'ml', 'un'].includes(n.unidade) ? n.unidade : 'g',
+          obs: String(n.obs || '').trim(),
+          liveQuote: n.liveQuote || null,
+          _included: !matched,
+          _matchedExistingId: matched ? matched.id : null,
+          _matchedExistingName: matched ? matched.nome : null,
+          _matchedExistingPreco: matched ? Number(matched.preco || 0) : null,
+          _matchedExistingQtd: matched ? Number(matched.quantidade || 1) : null,
+          _matchedExistingUnidade: matched ? matched.unidade : null,
+        };
+      });
+
+      const subreceitas = (Array.isArray(res.subreceitas) ? res.subreceitas : []).map((s, idx) => ({
+        tempId: String(s.tempId || `new-sub-${idx + 1}`),
+        nome: String(s.nome || `Base ${idx + 1}`).trim(),
+        tipo: 'subreceita',
+        rendimento: Math.max(0.01, Number(s.rendimento || 1)),
+        unidadeRendimento: String(s.unidadeRendimento || 'un').trim(),
+        pesoReferencia: String(s.pesoReferencia || '').trim(),
+        custosIndiretosPct: Math.max(0, Number(s.custosIndiretosPct ?? 15)),
+        itens: Array.isArray(s.itens) ? s.itens.map((it) => ({
+          tipo: it.tipo === 'subreceita' ? 'subreceita' : 'insumo',
+          refId: String(it.refId || ''),
+          quantidade: Math.max(0, Number(it.quantidade || 0)),
+        })) : [],
+        passos: Array.isArray(s.passos) ? s.passos.filter(Boolean).map(String) : [],
+        custoTotal: round2(s.custoTotal || 0),
+        _rawCustoUnitario: Number(s.custoUnitario || 0),
+        custoUnitario: Number(s.custoUnitario || 0),
+      }));
+
+      const produtos = (Array.isArray(res.produtos) ? res.produtos : []).map((p, idx) => {
+        const directPrice = Math.max(0, round2(p.precoVendaDireta ?? p.pricingPreview?.precoDireto ?? 0));
+        return {
+          tempId: String(p.tempId || `new-prod-${idx + 1}`),
+          nome: String(p.nome || `Produto ${idx + 1}`).trim(),
+          tipo: 'produto',
+          rendimento: Math.max(0.01, Number(p.rendimento || 1)),
+          unidadeRendimento: String(p.unidadeRendimento || 'un').trim(),
+          pesoReferencia: String(p.pesoReferencia || '').trim(),
+          custosIndiretosPct: Math.max(0, Number(p.custosIndiretosPct ?? 0)),
+          precoVendaDireta: directPrice,
+          fornadasPlanejadas: Math.max(0, Number(p.fornadasPlanejadas || 0)),
+          itens: Array.isArray(p.itens) ? p.itens.map((it) => ({
+            tipo: it.tipo === 'subreceita' ? 'subreceita' : 'insumo',
+            refId: String(it.refId || ''),
+            quantidade: Math.max(0, Number(it.quantidade || 0)),
+          })) : [],
+          passos: Array.isArray(p.passos) ? p.passos.filter(Boolean).map(String) : [],
+          justificativaComercial: String(p.justificativaComercial || '').trim(),
+          pricingPreview: p.pricingPreview ? { ...p.pricingPreview } : null,
+        };
+      });
+
+      const draft = {
+        model: res.model || 'gemini-3.6-flash',
+        summary: String(res.summary || '').trim(),
+        targetMargin,
+        novosInsumos,
+        subreceitas,
+        produtos,
+      };
+
+      recomputeImportDraftCosts(draft);
+      aiState.lastImportDraft = draft;
+      renderImportPreview();
+
+      G().showToast(`✨ Analisado! ${novosInsumos.length} insumo(s), ${subreceitas.length} base(s) e ${produtos.length} produto(s) prontos para revisão.`);
+      requestAnimationFrame(() => {
+        out?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    } catch (err) {
+      if (out) out.innerHTML = `<div class="alert-banner terracotta">${esc(err.message)}</div>`;
+      G().showToast(`Erro ao analisar receita: ${err.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function clearImportDraft() {
+    aiState.lastImportDraft = null;
+    const out = document.getElementById('ai-import-output');
+    if (out) out.innerHTML = '';
+    const ta = document.getElementById('ai-import-raw-text');
+    if (ta) {
+      ta.value = '';
+      ta.focus();
+    }
+  }
+
+  function commitImportedRecipes() {
+    const draft = aiState.lastImportDraft;
+    if (!draft) return;
+
+    const state = G().getState();
+    const ts = Date.now();
+    const tempIdMap = new Map();
+    const excludedIngTempIds = new Set();
+
+    const existingIngByName = new Map();
+    for (const ing of state.ingredients || []) {
+      const norm = normalizeName(ing.nome);
+      if (norm && !existingIngByName.has(norm)) {
+        existingIngByName.set(norm, ing);
+      }
+    }
+
+    let addedIngs = 0;
+    let addedSubs = 0;
+    let addedProds = 0;
+
+    // 1. Novos Insumos (evita duplicatas por nome normalizado e constrói tempIdMap)
+    (draft.novosInsumos || []).forEach((novo, idx) => {
+      const norm = normalizeName(novo.nome);
+      const existing = existingIngByName.get(norm);
+      if (existing) {
+        tempIdMap.set(novo.tempId, existing.id);
+        return;
+      }
+      if (!novo._included) {
+        excludedIngTempIds.add(novo.tempId);
+        return;
+      }
+
+      const realId = `ing-ia-${makeSlug(novo.nome)}-${ts}-${idx}`;
+      const lq = novo.liveQuote && typeof novo.liveQuote === 'object' ? novo.liveQuote : null;
+      const newIng = {
+        id: realId,
+        nome: String(novo.nome || `Insumo ${idx + 1}`).trim(),
+        categoria: String(novo.categoria || 'Outros').trim(),
+        preco: Math.max(0.01, round2(novo.preco)),
+        quantidade: Math.max(0.01, Number(novo.quantidade || 100)),
+        unidade: ['g', 'ml', 'un'].includes(novo.unidade) ? novo.unidade : 'g',
+        obs: String(novo.obs || 'Importado via IA').trim(),
+      };
+      if (lq) {
+        newIng.aiMeta = {
+          lastCheckedAt: new Date().toISOString(),
+          lastStore: String(lq.store || 'Mercado SC'),
+          matchedProduct: String(lq.title || lq.matchedProduct || newIng.nome),
+          productUrl: lq.url || lq.productUrl || null,
+          previousPrice: null,
+          deltaPct: 0,
+          confidence: lq.confidence || 'media',
+          applied: true,
+        };
+      }
+
+      state.ingredients.push(newIng);
+      if (norm) existingIngByName.set(norm, newIng);
+      tempIdMap.set(novo.tempId, realId);
+      addedIngs += 1;
+    });
+
+    // 2. Gera IDs permanentes para todas as sub-receitas antes de remapear itens (suporta base -> base)
+    const subEntries = (draft.subreceitas || []).map((sub, idx) => {
+      const realId = `sub-ia-${makeSlug(sub.nome)}-${ts}-${idx}`;
+      tempIdMap.set(sub.tempId, realId);
+      return { sub, realId };
+    });
+
+    const validIngIds = new Set((state.ingredients || []).map((i) => i.id));
+    const validSubIds = new Set([
+      ...(state.recipes || []).filter((r) => r.tipo === 'subreceita').map((r) => r.id),
+      ...subEntries.map((e) => e.realId),
+    ]);
+
+    const remapItems = (itens) => (Array.isArray(itens) ? itens : [])
+      .map((it) => {
+        const tipo = it.tipo === 'subreceita' ? 'subreceita' : 'insumo';
+        const quantidade = Number(it.quantidade || 0);
+        if (tipo === 'insumo' && excludedIngTempIds.has(it.refId)) return null;
+        const mappedRefId = tempIdMap.get(it.refId) || it.refId;
+        if (!(quantidade > 0)) return null;
+        if (tipo === 'insumo' && !validIngIds.has(mappedRefId)) return null;
+        if (tipo === 'subreceita' && !validSubIds.has(mappedRefId)) return null;
+        return { tipo, refId: mappedRefId, quantidade };
+      })
+      .filter(Boolean);
+
+    // 3. Adiciona Sub-receitas com refIds remapeados
+    for (const { sub, realId } of subEntries) {
+      state.recipes.push({
+        id: realId,
+        nome: String(sub.nome || 'Base Importada').trim(),
+        tipo: 'subreceita',
+        rendimento: Math.max(0.01, Number(sub.rendimento || 1)),
+        unidadeRendimento: String(sub.unidadeRendimento || 'un').trim(),
+        pesoReferencia: String(sub.pesoReferencia || '').trim(),
+        custosIndiretosPct: Math.max(0, Number(sub.custosIndiretosPct ?? 15)),
+        itens: remapItems(sub.itens),
+        passos: Array.isArray(sub.passos) ? sub.passos.filter(Boolean).map(String) : [],
+      });
+      addedSubs += 1;
+    }
+
+    // 4. Adiciona Produtos Finais com refIds remapeados
+    (draft.produtos || []).forEach((prod, idx) => {
+      const realId = `prod-ia-${makeSlug(prod.nome)}-${ts}-${idx}`;
+      tempIdMap.set(prod.tempId, realId);
+      state.recipes.push({
+        id: realId,
+        nome: String(prod.nome || 'Produto Importado').trim(),
+        tipo: 'produto',
+        rendimento: Math.max(0.01, Number(prod.rendimento || 1)),
+        unidadeRendimento: String(prod.unidadeRendimento || 'un').trim(),
+        pesoReferencia: String(prod.pesoReferencia || '').trim(),
+        custosIndiretosPct: Math.max(0, Number(prod.custosIndiretosPct ?? 0)),
+        precoVendaDireta: Math.max(0, round2(prod.precoVendaDireta ?? prod.pricingPreview?.precoDireto ?? 0)),
+        fornadasPlanejadas: Math.max(0, Number(prod.fornadasPlanejadas || 0)),
+        itens: remapItems(prod.itens),
+        passos: Array.isArray(prod.passos) ? prod.passos.filter(Boolean).map(String) : [],
+      });
+      addedProds += 1;
+    });
+
+    if (addedIngs === 0 && addedSubs === 0 && addedProds === 0) {
+      G().showToast('Nenhum item selecionado para importar.');
+      return;
+    }
+
+    aiState.lastImportDraft = null;
+    const out = document.getElementById('ai-import-output');
+    if (out) out.innerHTML = '';
+    const ta = document.getElementById('ai-import-raw-text');
+    if (ta) ta.value = '';
+
+    G().saveState();
+    G().switchTab('receitas');
+    G().showToast(`✨ Importado! ${addedIngs} insumo(s), ${addedSubs} base(s) e ${addedProds} produto(s) adicionados.`);
+  }
+
+  function openRecipeImporter() {
+    G().switchTab('ia');
+    switchAiSub('lab');
+    requestAnimationFrame(() => {
+      const card = document.getElementById('ai-import-recipe-card');
+      const ta = document.getElementById('ai-import-raw-text');
+      card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => {
+        ta?.focus({ preventScroll: true });
+      }, 220);
+    });
+  }
+
   // ======================== LABORATÓRIO CRIATIVO IA ========================
   async function generateAiRecipe() {
     const idea = (document.getElementById('ai-recipe-idea')?.value || '').trim();
@@ -1257,7 +2342,7 @@
       btn.addEventListener('click', () => switchAiSub(btn.dataset.aiSub));
     });
 
-    // Atalhos globais de Sync / Nota Fiscal em outras abas
+    // Atalhos globais de Sync / Nota Fiscal / Importação de Receitas em outras abas
     document.getElementById('btn-topbar-ai-sync')?.addEventListener('click', () => runPriceSync({ mode: 'apply' }));
     document.getElementById('btn-insumos-ai-sync')?.addEventListener('click', () => runPriceSync({ mode: 'apply' }));
     document.getElementById('btn-invest-ai-sync')?.addEventListener('click', () => runPriceSync({ mode: 'apply' }));
@@ -1265,6 +2350,7 @@
       G().switchTab('ia');
       switchAiSub('receipt');
     });
+    document.getElementById('btn-open-ai-import-recipe')?.addEventListener('click', openRecipeImporter);
 
     // Botões principais da Central IA
     document.getElementById('btn-ai-sync-now')?.addEventListener('click', () => runPriceSync({ mode: 'apply' }));
@@ -1273,8 +2359,21 @@
     document.getElementById('btn-ai-apply-all-preview')?.addEventListener('click', applyAllPreviewToStock);
 
     // Configurações de automação
-    ['ai-cfg-auto-apply', 'ai-cfg-protect-margins', 'ai-cfg-check-equip', 'ai-cfg-max-delta'].forEach((id) => {
-      document.getElementById(id)?.addEventListener('change', saveAiSettings);
+    ['ai-cfg-auto-apply', 'ai-cfg-protect-margins', 'ai-cfg-prefer-fort', 'ai-cfg-fort-tol', 'ai-cfg-check-equip', 'ai-cfg-max-delta'].forEach((id) => {
+      document.getElementById(id)?.addEventListener('change', () => saveAiSettings());
+    });
+
+    // Seleção de mercados locais pelos 3 polos (Tapera, Centro, Estreito)
+    document.getElementById('ai-stores-hubs-card')?.addEventListener('change', (e) => {
+      const cb = e.target.closest('.js-ai-store-toggle');
+      if (!cb) return;
+      const checkedCount = document.querySelectorAll('#ai-stores-hubs-card .js-ai-store-toggle:checked').length;
+      if (checkedCount === 0) {
+        cb.checked = true;
+        G().showToast('Mantenha pelo menos 1 mercado ativo para a pesquisa.');
+        return;
+      }
+      saveAiSettings();
     });
 
     // Chat CFO IA
@@ -1323,10 +2422,65 @@
       e.target.value = '';
     });
 
-    // Laboratório Criativo IA
+    // Laboratório Criativo IA & Importador de Receitas
+    document.getElementById('btn-ai-import-parse')?.addEventListener('click', parseImportRecipes);
     document.getElementById('btn-ai-create-recipe')?.addEventListener('click', generateAiRecipe);
     document.getElementById('btn-ai-optimize-goal')?.addEventListener('click', optimizeGoalPlan);
     document.getElementById('btn-ai-generate-mkt')?.addEventListener('click', generateMarketingCopy);
+
+    // Edição inline ao vivo no Preview do Importador de Receitas
+    const importOut = document.getElementById('ai-import-output');
+    importOut?.addEventListener('input', (e) => {
+      const draft = aiState.lastImportDraft;
+      if (!draft) return;
+
+      if (e.target.classList.contains('js-import-ing-price')) {
+        const idx = Number(e.target.dataset.ingIdx);
+        const novo = draft.novosInsumos?.[idx];
+        if (!novo || novo._matchedExistingId) return;
+        novo.preco = Math.max(0, round2(G().parseLocaleNumber(e.target.value)));
+        recomputeImportDraftCosts(draft);
+        updateImportDraftDomInPlace();
+      } else if (e.target.classList.contains('js-import-prod-price')) {
+        const idx = Number(e.target.dataset.prodIdx);
+        const prod = draft.produtos?.[idx];
+        if (!prod) return;
+        prod.precoVendaDireta = Math.max(0, round2(G().parseLocaleNumber(e.target.value)));
+        const custoUnitario = Number(prod.pricingPreview?.custoUnitario || 0);
+        const custoTotalLote = Number(prod.pricingPreview?.custoTotalLote || 0);
+        const ch = computeChannelPricingLocal(custoUnitario, prod.precoVendaDireta, G().getState().config);
+        prod.pricingPreview = { ...ch, custoTotalLote };
+        updateImportDraftDomInPlace();
+      }
+    });
+
+    importOut?.addEventListener('change', (e) => {
+      const draft = aiState.lastImportDraft;
+      if (!draft) return;
+
+      if (e.target.classList.contains('js-import-ing-toggle')) {
+        const idx = Number(e.target.dataset.ingIdx);
+        const novo = draft.novosInsumos?.[idx];
+        if (!novo || novo._matchedExistingId) return;
+        novo._included = Boolean(e.target.checked);
+        const row = importOut.querySelector(`[data-ing-row="${idx}"]`);
+        row?.classList.toggle('is-excluded', !novo._included);
+        const priceInput = importOut.querySelector(`.js-import-ing-price[data-ing-idx="${idx}"]`);
+        if (priceInput) priceInput.disabled = !novo._included;
+        recomputeImportDraftCosts(draft);
+        updateImportDraftDomInPlace();
+      } else if (e.target.classList.contains('js-import-ing-price')) {
+        const idx = Number(e.target.dataset.ingIdx);
+        const novo = draft.novosInsumos?.[idx];
+        if (!novo || novo._matchedExistingId) return;
+        e.target.value = num(novo.preco, 2);
+      } else if (e.target.classList.contains('js-import-prod-price')) {
+        const idx = Number(e.target.dataset.prodIdx);
+        const prod = draft.produtos?.[idx];
+        if (!prod) return;
+        e.target.value = num(prod.precoVendaDireta, 2);
+      }
+    });
 
     // Delegação global para botões dinâmicos gerados pela IA
     document.addEventListener('click', (e) => {
@@ -1344,6 +2498,10 @@
         saveGeneratedRecipeToState();
       } else if (e.target.id === 'btn-ai-apply-goal-plan') {
         applyGoalPlanToState();
+      } else if (e.target.id === 'btn-ai-import-commit') {
+        commitImportedRecipes();
+      } else if (e.target.id === 'btn-ai-import-clear') {
+        clearImportDraft();
       } else if (e.target.classList.contains('js-ai-apply-single')) {
         const ingId = e.target.dataset.ingId;
         const newPrice = Number(e.target.dataset.newPrice);
@@ -1399,6 +2557,8 @@
     syncSingleIngredient,
     runPriceSync,
     loadAiStatus,
+    openRecipeImporter,
+    commitImportedRecipes,
   };
 
   bindAiEvents();

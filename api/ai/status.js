@@ -5,9 +5,10 @@ import {
   readGestaoStateBlob,
   writeGestaoStateBlob,
   DEFAULT_AI_SETTINGS,
+  normalizeAiSettings,
 } from '../../lib/blob-store.js';
 import { isGeminiConfigured, COPILOT_MODELS, FAST_BATCH_MODELS } from '../../lib/gemini-client.js';
-import { MARKET_STORES } from '../../lib/market-prices.js';
+import { MARKET_STORES, SHOPPING_HUBS } from '../../lib/market-prices.js';
 
 export async function GET(request) {
   const denied = requireAuth(request);
@@ -20,7 +21,19 @@ export async function GET(request) {
       models: COPILOT_MODELS,
       copilotModels: COPILOT_MODELS,
       fastModels: FAST_BATCH_MODELS,
-      stores: MARKET_STORES.map((s) => ({ id: s.id, name: s.name, region: s.region, specialty: s.specialty })),
+      hubs: SHOPPING_HUBS,
+      stores: MARKET_STORES.map((s) => ({
+        id: s.id,
+        name: s.name,
+        shortName: s.shortName,
+        hub: s.hub,
+        hubs: s.hubs,
+        hubLabel: s.hubLabel,
+        address: s.address,
+        distanceHint: s.distanceHint,
+        isPreferred: Boolean(s.isPreferred),
+        specialty: s.specialty,
+      })),
       schedule: {
         name: 'daily-price-sync',
         cron: '0 7 * * 1,4',
@@ -86,9 +99,14 @@ export async function PUT(request) {
       });
     }
 
-    // Atualização das configurações de automação da IA
+    // Atualização das configurações de automação e polos de mercados da IA
     const incoming = body?.settings || {};
-    const nextSettings = {
+    const validIds = new Set(MARKET_STORES.map((s) => s.id));
+    const nextEnabledStores = Array.isArray(incoming.enabledStoreIds)
+      ? incoming.enabledStoreIds.filter((id) => validIds.has(id))
+      : report.settings.enabledStoreIds;
+
+    const nextSettings = normalizeAiSettings({
       ...DEFAULT_AI_SETTINGS,
       ...report.settings,
       autoApplyPrices: incoming.autoApplyPrices !== undefined ? Boolean(incoming.autoApplyPrices) : report.settings.autoApplyPrices,
@@ -97,7 +115,14 @@ export async function PUT(request) {
       maxAutoChangePct: incoming.maxAutoChangePct !== undefined
         ? Math.max(10, Math.min(200, Number(incoming.maxAutoChangePct) || 55))
         : report.settings.maxAutoChangePct,
-    };
+      preferFortRancho: incoming.preferFortRancho !== undefined
+        ? Boolean(incoming.preferFortRancho)
+        : report.settings.preferFortRancho,
+      fortTolerancePct: incoming.fortTolerancePct !== undefined
+        ? Math.max(0, Math.min(30, Number(incoming.fortTolerancePct) || 0))
+        : report.settings.fortTolerancePct,
+      enabledStoreIds: nextEnabledStores?.length ? nextEnabledStores : report.settings.enabledStoreIds,
+    });
 
     const saved = await writeAiReportBlob({
       ...report,

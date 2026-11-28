@@ -235,6 +235,7 @@
               <button class="btn btn-secondary btn-sm recipe-filter" data-recipe-filter="subreceita" type="button">🥣 Bases &amp; Recheios</button>
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button id="btn-open-ai-import-recipe" class="btn btn-ai btn-sm" type="button">✨ Importar Receita (IA)</button>
               <button id="btn-new-subrecipe" class="btn btn-secondary btn-sm" type="button">+ Nova Base</button>
               <button id="btn-new-recipe" class="btn btn-primary btn-sm" type="button">+ Novo Produto Final</button>
             </div>
@@ -525,8 +526,8 @@
                   <span class="badge badge-olive" id="ai-schedule-badge">⏰ Sync Automático: Seg &amp; Qui • 07:00 (Brasília)</span>
                   <span class="badge badge-gold" id="ai-model-badge">Copilot: Gemini 3.6 Flash</span>
                 </div>
-                <h2 class="card-title" style="font-size:1.35rem;">Central de Inteligência &amp; Radar de Preços SC</h2>
-                <p class="card-desc" id="ai-last-sync-desc">Pesquisa automática 2x por semana (Segunda e Quinta às 07h) nos mercados de Florianópolis/SC (Giassi, Bistek, Angeloni, Atacadão) e Loja Santo Antônio com recálculo de preços unitários, investimentos e ROIs.</p>
+                <h2 class="card-title" style="font-size:1.35rem;">Central de Inteligência &amp; Radar de Preços Local (Florianópolis/SC)</h2>
+                <p class="card-desc" id="ai-last-sync-desc">Pesquisa 2x por semana (Segunda e Quinta às 07h) apenas nos mercados perto de casa (CEP 88049-332 — preferência Fort Campeche), Centro (Ed. Constância Nandi) e Estreito (Rua Liberato Bittencourt).</p>
               </div>
               <div class="ai-hero-actions">
                 <button id="btn-ai-sync-now" class="btn btn-ai" type="button">🚀 Pesquisar Preços &amp; Atualizar ROIs</button>
@@ -560,17 +561,28 @@
               </label>
               <label class="ai-toggle-item">
                 <input id="ai-cfg-protect-margins" type="checkbox" checked />
-                <span><strong>Proteger margem mínima</strong> ajustando preço unitário se cair</span>
+                <span><strong>Proteger margem mínima</strong> ajustando preço unitário</span>
               </label>
               <label class="ai-toggle-item">
-                <input id="ai-cfg-check-equip" type="checkbox" />
-                <span>Pesquisar também <strong>equipamentos pendentes</strong></span>
+                <input id="ai-cfg-prefer-fort" type="checkbox" checked />
+                <span>⭐ <strong>Priorizar Fort Atacadista (Rancho)</strong></span>
               </label>
-              <div class="field-group" style="flex-direction:row; align-items:center; gap:8px; margin-left:auto;">
+              <div class="field-group" style="flex-direction:row; align-items:center; gap:6px;">
+                <label for="ai-cfg-fort-tol" style="margin:0;" title="Diferença máxima aceita para concentrar a compra no Fort em vez de buscar em outro mercado">Tolerância Fort (%):</label>
+                <input id="ai-cfg-fort-tol" type="text" inputmode="numeric" class="input input-num" value="8" style="width:56px;" />
+              </div>
+              <label class="ai-toggle-item">
+                <input id="ai-cfg-check-equip" type="checkbox" />
+                <span>Cotar equipamentos</span>
+              </label>
+              <div class="field-group" style="flex-direction:row; align-items:center; gap:6px; margin-left:auto;">
                 <label for="ai-cfg-max-delta" style="margin:0;">Trava segurança (%):</label>
-                <input id="ai-cfg-max-delta" type="text" inputmode="numeric" class="input input-num" value="55" style="width:68px;" title="Ignora atualizações automáticas se a variação passar deste percentual" />
+                <input id="ai-cfg-max-delta" type="text" inputmode="numeric" class="input input-num" value="55" style="width:62px;" title="Ignora atualizações automáticas se a variação passar deste percentual" />
               </div>
             </div>
+
+            <!-- Polos & Mercados Acessíveis sem Carro -->
+            <div id="ai-stores-hubs-card" style="margin-bottom:20px;"></div>
 
             <!-- Briefing Executivo IA -->
             <div id="ai-radar-briefing-box" style="margin-bottom:20px;"></div>
@@ -593,8 +605,8 @@
               <div class="card">
                 <div class="card-header">
                   <div>
-                    <h3 class="card-title">Roteiro Inteligente de Compras (SC)</h3>
-                    <p class="card-desc">Onde comprar cada insumo da lista planejada pelo menor preço encontrado hoje.</p>
+                    <h3 class="card-title">Roteiro Inteligente de Compras (Casa &amp; Trabalho)</h3>
+                    <p class="card-desc">Concentra o rancho no Fort Atacadista e indica o que compensa trazer a pé na volta do Centro ou Estreito.</p>
                   </div>
                 </div>
                 <div id="ai-shopping-route-box"></div>
@@ -612,7 +624,7 @@
               <div class="card-header" style="padding:18px 22px 14px; margin-bottom:0; border-bottom:1px solid var(--border-gold);">
                 <div>
                   <h3 class="card-title">Auditoria de Preços ao Vivo por Insumo</h3>
-                  <p class="card-desc">Comparativo real auditado pelo Gemini entre Giassi SC, Bistek SC, Angeloni SC, Atacadão e Loja Santo Antônio.</p>
+                  <p class="card-desc">Comparativo real auditado pelo Gemini nos 3 polos locais (Tapera CEP 88049-332, Centro Rua Trajano e Estreito Rua Liberato Bittencourt).</p>
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
                   <button id="btn-ai-apply-all-preview" class="btn btn-primary btn-sm" type="button" style="display:none;">✓ Aplicar Tudo no Estoque</button>
@@ -685,7 +697,7 @@
               <div class="card-header">
                 <div>
                   <h3 class="card-title">📸 Leitor Inteligente de Cupom / Nota Fiscal (Gemini Vision)</h3>
-                  <p class="card-desc">Tirou foto da nota do Fort Atacadista, Giassi, Bistek ou Angeloni? A IA lê os preços reais pagos e atualiza seu estoque e ROIs em 1 clique.</p>
+                  <p class="card-desc">Tirou foto da nota do Fort Atacadista, Imperatriz, Bistek, Hiper Select, Hippo ou Angeloni? A IA lê os preços reais pagos e atualiza seu estoque e ROIs em 1 clique.</p>
                 </div>
               </div>
 
@@ -705,6 +717,45 @@
 
           <!-- ===== SUB 4: LABORATÓRIO CRIATIVO IA ===== -->
           <div id="ia-sub-lab" class="ai-subpanel">
+            <!-- Ferramenta Principal: Importador & Precificador de Receitas via Texto / WhatsApp -->
+            <div id="ai-import-recipe-card" class="card ai-import-card" style="margin-bottom:20px;">
+              <div class="card-header">
+                <div>
+                  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+                    <span class="badge badge-ai">✨ WhatsApp &amp; Texto Livre</span>
+                    <span class="badge badge-olive">⚡ Importação em 1 Clique</span>
+                  </div>
+                  <h3 class="card-title">📥 Importar &amp; Precificar Receitas via Texto / WhatsApp (IA)</h3>
+                  <p class="card-desc">Cole uma conversa de WhatsApp, uma receita com massa + vários recheios ou anotações soltas. A IA estrutura novos insumos, bases e sabores finais com tabela completa de custos, margens, ROI e iFood.</p>
+                </div>
+              </div>
+
+              <div class="ai-import-form">
+                <div class="field-group">
+                  <label for="ai-import-raw-text">Texto da receita ou conversa de WhatsApp</label>
+                  <textarea id="ai-import-raw-text" class="input ai-import-textarea" rows="6" placeholder="Ex: Cole aqui sua conversa de WhatsApp ou receita completa com massa + vários recheios/sabores...&#10;&#10;Massa de Chocotone (rende 2 un): 400g farinha, 10g fermento biológico seco, 6 gemas, 80g açúcar, 100g margarina, 300g gotas de chocolate...&#10;Recheio 1 (Brigadeiro): 1 lata leite condensado, 1 cx creme de leite, 3 col. sopa chocolate 50%&#10;Recheio 2 (Leite Ninho): 1 lata leite condensado, 1 cx creme de leite, 3 col. sopa leite Ninho"></textarea>
+                </div>
+
+                <div class="ai-import-controls">
+                  <div class="field-group ai-import-margin-group">
+                    <label for="ai-import-margin">Margem alvo (%)</label>
+                    <input id="ai-import-margin" type="text" inputmode="decimal" class="input input-num" value="50" />
+                  </div>
+
+                  <label class="ai-toggle-item ai-import-live-toggle">
+                    <input id="ai-import-live-prices" type="checkbox" />
+                    <span>Cotar novos insumos ao vivo nos mercados SC</span>
+                  </label>
+
+                  <div class="ai-import-actions">
+                    <button id="btn-ai-import-parse" class="btn btn-ai" type="button">✨ Analisar &amp; Precificar com IA</button>
+                  </div>
+                </div>
+              </div>
+
+              <div id="ai-import-output" class="ai-import-output"></div>
+            </div>
+
             <div class="grid-2" style="margin-bottom:20px;">
               <!-- Ferramenta 1: Criador de Ficha Técnica IA -->
               <div class="card">
